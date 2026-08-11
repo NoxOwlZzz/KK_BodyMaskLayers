@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" Condition="false" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{586F31E1-74D4-4A9F-8C65-9A476580356A}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>NightOwlZzz.Koikatsu.BodyMaskLayers.Tests</RootNamespace>
+    <AssemblyName>KK_BodyMaskLayers.Tests</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkProfile></TargetFrameworkProfile>
+    <LangVersion>3</LangVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <NoStdLib>true</NoStdLib>
+    <_EnableDefaultWindowsPlatform>false</_EnableDefaultWindowsPlatform>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="mscorlib">
+      <HintPath>..\lib\mscorlib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>..\lib\System.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Core">
+      <HintPath>..\lib\System.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="TestAssert.cs" />
+    <Compile Include="PureLogicTests.cs" />
+
+    <Compile Include="..\src\Enums.cs">
+      <Link>LinkedSource\Enums.cs</Link>
+    </Compile>
+    <Compile Include="..\src\Rgba32.cs">
+      <Link>LinkedSource\Rgba32.cs</Link>
+    </Compile>
+    <Compile Include="..\src\ClothingStateResolver.cs">
+      <Link>LinkedSource\ClothingStateResolver.cs</Link>
+    </Compile>
+    <Compile Include="..\src\SemanticMask.cs">
+      <Link>LinkedSource\SemanticMask.cs</Link>
+    </Compile>
+    <Compile Include="..\src\MaskColorDecoder.cs">
+      <Link>LinkedSource\MaskColorDecoder.cs</Link>
+    </Compile>
+    <Compile Include="..\src\MaskResolutionConverter.cs">
+      <Link>LinkedSource\MaskResolutionConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\src\MaskComposer.cs">
+      <Link>LinkedSource\MaskComposer.cs</Link>
+    </Compile>
+    <Compile Include="..\src\MaskPreviewBuilder.cs">
+      <Link>LinkedSource\MaskPreviewBuilder.cs</Link>
+    </Compile>
+    <Compile Include="..\src\BodyMaskFormatAdapter.cs">
+      <Link>LinkedSource\BodyMaskFormatAdapter.cs</Link>
+    </Compile>
+    <Compile Include="..\src\PngMaskValidator.cs">
+      <Link>LinkedSource\PngMaskValidator.cs</Link>
+    </Compile>
+    <Compile Include="..\src\ClothingItemIdentity.cs">
+      <Link>LinkedSource\ClothingItemIdentity.cs</Link>
+    </Compile>
+    <Compile Include="..\src\ClothingMaskLayerData.cs">
+      <Link>LinkedSource\ClothingMaskLayerData.cs</Link>
+    </Compile>
+    <Compile Include="..\src\CardDataSerializer.cs">
+      <Link>LinkedSource\CardDataSerializer.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

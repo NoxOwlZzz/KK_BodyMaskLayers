@@ -1,0 +1,87 @@
+## Example configuration for KK_BodyMaskLayers 0.1.2.
+## Copy to BepInEx\config\com.nightowlzzz.koikatsu.bodymasklayers.cfg only if needed.
+## BepInEx normally creates the live file on first start.
+
+[General]
+
+## Master switch. False restores the upstream body mask and stops custom contribution.
+# Setting type: Boolean
+# Default value: true
+Enabled = true
+
+[Masks]
+
+# Setting type: Int32
+# Default value: 128
+Minimum resolution = 128
+
+# Setting type: Int32
+# Default value: 2048
+MaximumMaskResolution = 2048
+
+# Setting type: Int32
+# Default value: 512
+Default output resolution = 512
+
+# Setting type: Int32
+# Default value: 16777216
+Maximum PNG bytes = 16777216
+
+## Exact, Threshold, or NearestCategory.
+# Setting type: ColorClassificationMode
+# Default value: Threshold
+Color classification = Threshold
+
+# Setting type: Int32
+# Default value: 12
+ColorTolerance = 12
+
+## RejectMask, NoContribution, or HideWhenNotOff. Under Threshold + RejectMask,
+## a no-blue exported palette with at most 12.5% nearby unknown pixels is normalized safely.
+# Setting type: UnknownColorPolicy
+# Default value: RejectMask
+UnknownColorPolicy = RejectMask
+
+[States]
+
+## NoContribution is the safe behavior for values outside 0..3.
+# Setting type: UnknownStatePolicy
+# Default value: NoContribution
+UnknownStatePolicy = NoContribution
+
+[Binding]
+
+## SlotAndItem is safe; SlotOnly is an advanced opt-in.
+# Setting type: MaskBindingMode
+# Default value: SlotAndItem
+MaskBindingMode = SlotAndItem
+
+[Compatibility]
+
+# Setting type: Boolean
+# Default value: false
+Allow unaudited ChaAlphaMask versions = false
+
+[Diagnostics]
+
+# Setting type: Boolean
+# Default value: false
+DebugLogging = false
+
+# Setting type: Boolean
+# Default value: false
+LogStateChanges = false
+
+# Setting type: Boolean
+# Default value: false
+LogComposition = false
+
+## Minimum spacing for repeated diagnostic messages, in seconds.
+# Setting type: Single
+# Default value: 1
+LogIntervalSeconds = 1
+
+## BepInEx KeyboardShortcut syntax.
+# Setting type: KeyboardShortcut
+# Default value: F8 + LeftControl
+DumpDiagnosticsShortcut = F8 + LeftControl
