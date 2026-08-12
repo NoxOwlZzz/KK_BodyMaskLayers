@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Removed local PDB paths from Release assemblies and added a release-package privacy check.
+- Removed local PDB paths from Release assemblies and added a PDB output guard.
 - Added source-only repository exclusions and parameterized game-directory scripts.
 
 ## 0.1.2

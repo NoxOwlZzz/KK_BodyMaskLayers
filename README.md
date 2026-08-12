@@ -101,18 +101,6 @@ run-tests.bat
 
 `KOIKATSU_DIR` may be set instead of passing the game directory to the scripts. Visual Studio 2022 or compatible MSBuild tooling is required.
 
-Create the distributable ZIP and checksum with:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\package-release.ps1
-```
-
-The package contains only:
-
-```text
-BepInEx/plugins/KK_BodyMaskLayers/KK_BodyMaskLayers.dll
-```
-
 Release builds intentionally omit debug symbols and local PDB paths.
 
 ## Compatibility and limitations
