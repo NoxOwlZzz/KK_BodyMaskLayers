@@ -1,4 +1,4 @@
-## Example configuration for KK_BodyMaskLayers 0.1.2.
+## Example configuration for KK_BodyMaskLayers 0.2.0.
 ## Copy to BepInEx\config\com.nightowlzzz.koikatsu.bodymasklayers.cfg only if needed.
 ## BepInEx normally creates the live file on first start.
 
@@ -11,21 +11,12 @@ Enabled = true
 
 [Masks]
 
-# Setting type: Int32
-# Default value: 128
-Minimum resolution = 128
-
-# Setting type: Int32
-# Default value: 2048
-MaximumMaskResolution = 2048
+## PNG validation uses fixed internal format guards: square power-of-two dimensions
+## from 1 through 4096 and no more than 32 MiB of embedded PNG data.
 
 # Setting type: Int32
 # Default value: 512
 Default output resolution = 512
-
-# Setting type: Int32
-# Default value: 16777216
-Maximum PNG bytes = 16777216
 
 ## Exact, Threshold, or NearestCategory.
 # Setting type: ColorClassificationMode
@@ -42,6 +33,14 @@ ColorTolerance = 12
 # Default value: RejectMask
 UnknownColorPolicy = RejectMask
 
+## Auto preserves safe continuous R/G values. PreserveContinuous accepts explicit
+## native R/G coverage. StrictCategorical keeps the 0.1.x palette-only behavior.
+## The selected mode is stored with each newly imported layer; changing this default
+## does not reinterpret existing BML2 layers.
+# Setting type: GradientHandlingMode
+# Default value: Auto
+Gradient Handling = Auto
+
 [States]
 
 ## NoContribution is the safe behavior for values outside 0..3.
@@ -49,18 +48,34 @@ UnknownColorPolicy = RejectMask
 # Default value: NoContribution
 UnknownStatePolicy = NoContribution
 
-[Binding]
-
-## SlotAndItem is safe; SlotOnly is an advanced opt-in.
-# Setting type: MaskBindingMode
-# Default value: SlotAndItem
-MaskBindingMode = SlotAndItem
-
 [Compatibility]
 
 # Setting type: Boolean
 # Default value: false
 Allow unaudited ChaAlphaMask versions = false
+
+## Resolve original KK_ChaAlphaMask metadata and textures directly when the old DLL
+## is absent. Direct resolution never modifies the original zipmod.
+# Setting type: Boolean
+# Default value: true
+Enable Nakay Legacy Compatibility = true
+
+## Silently create a portable native BML2 layer after a legacy source resolves.
+## Existing native layers are never overwritten. A normal card/coordinate save
+## persists the converted copy; set false for runtime-only compatibility.
+# Setting type: Boolean
+# Default value: true
+Auto Convert Nakay Legacy Masks = true
+
+## Build the session metadata index once at startup when direct compatibility is active.
+# Setting type: Boolean
+# Default value: true
+Legacy Index Auto Refresh = true
+
+## Shared compiled-mask LRU limit. Runtime values are clamped to 16-1024 MB.
+# Setting type: Int32
+# Default value: 128
+Legacy Cache Memory Limit MB = 128
 
 [Diagnostics]
 
@@ -85,3 +100,8 @@ LogIntervalSeconds = 1
 # Setting type: KeyboardShortcut
 # Default value: F8 + LeftControl
 DumpDiagnosticsShortcut = F8 + LeftControl
+
+## Numeric provider/cache counters. Disabled by default.
+# Setting type: Boolean
+# Default value: false
+Legacy Diagnostics = false

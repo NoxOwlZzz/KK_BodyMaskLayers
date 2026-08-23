@@ -21,7 +21,7 @@ if not exist "%GAME_ROOT%\Koikatu.exe" (
 
 if not exist "%LIB%" mkdir "%LIB%"
 
-for %%F in (mscorlib.dll System.dll System.Core.dll Assembly-CSharp.dll Assembly-CSharp-firstpass.dll UnityEngine.dll UnityEngine.UI.dll TextMeshPro-1.0.55.56.0b12.dll) do (
+for %%F in (mscorlib.dll System.dll System.Core.dll System.Xml.dll Assembly-CSharp.dll Assembly-CSharp-firstpass.dll UnityEngine.dll UnityEngine.UI.dll TextMeshPro-1.0.55.56.0b12.dll) do (
   if not exist "%MANAGED%\%%F" (
     echo ERROR: Missing managed reference "%MANAGED%\%%F".
     exit /b 3

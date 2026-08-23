@@ -40,11 +40,24 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 for (int x = 0; x < width; x++)
                 {
                     int sourceX = MaskResolutionConverter.SourceCoordinate(x, mask.Width, width);
-                    result[targetRow + x] = ToColor(mask.Rules[sourceRow + sourceX]);
+                    int sourceIndex = sourceRow + sourceX;
+                    MaskPixelRule rule = mask.GetCategoricalRule(sourceIndex);
+                    result[targetRow + x] = rule == MaskPixelRule.Unknown && !mask.HasCategoricalRules
+                        ? ToContinuousColor(mask, sourceIndex)
+                        : ToColor(rule);
                 }
             }
 
             return result;
+        }
+
+        private static Rgba32 ToContinuousColor(SemanticMask mask, int pixelIndex)
+        {
+            return new Rgba32(
+                (byte)(byte.MaxValue - mask.GetHideCoverageForRawState(pixelIndex, 0)),
+                (byte)(byte.MaxValue - mask.GetHideCoverageForRawState(pixelIndex, 1)),
+                (byte)(byte.MaxValue - mask.GetHideCoverageForRawState(pixelIndex, 2)),
+                byte.MaxValue);
         }
 
         private static Rgba32 ToColor(MaskPixelRule rule)

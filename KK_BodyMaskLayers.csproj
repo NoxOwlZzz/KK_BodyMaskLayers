@@ -48,6 +48,10 @@
       <HintPath>lib\System.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Xml">
+      <HintPath>lib\System.Xml.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="BepInEx">
       <HintPath>lib\BepInEx.dll</HintPath>
       <Private>False</Private>
@@ -88,29 +92,61 @@
   <ItemGroup>
     <Compile Include="src\AssemblyInfo.cs" />
     <Compile Include="src\BodyMaskCharacterController.cs" />
+    <Compile Include="src\BodyMaskControllerRegistry.cs" />
     <Compile Include="src\BodyMaskFormatAdapter.cs" />
     <Compile Include="src\BodyMaskHooks.cs" />
+    <Compile Include="src\BodyMaskPerformanceMetrics.cs" />
     <Compile Include="src\BodyMaskTargetResolver.cs" />
+    <Compile Include="src\BoundedLruCache.cs" />
     <Compile Include="src\CardDataSerializer.cs" />
+    <Compile Include="src\CharacterBodyMaskMaterialTarget.cs" />
+    <Compile Include="src\CharacterClothingRuntime.cs" />
+    <Compile Include="src\CharacterLegacyMaskSession.cs" />
+    <Compile Include="src\CharacterLegacyMaskCoordinator.cs" />
+    <Compile Include="src\CharacterMaskCompositionEngine.cs" />
+    <Compile Include="src\CharacterMaskDiagnostics.cs" />
+    <Compile Include="src\CharacterMaskPersistence.cs" />
+    <Compile Include="src\CharacterNativeMaskService.cs" />
     <Compile Include="src\ClothingItemIdentity.cs" />
     <Compile Include="src\ClothingItemIdentityResolver.cs" />
     <Compile Include="src\ClothingMaskLayerData.cs" />
     <Compile Include="src\ClothingSlotRegistry.cs" />
     <Compile Include="src\ClothingStateResolver.cs" />
     <Compile Include="src\CompatibilityPatches.cs" />
+    <Compile Include="src\CompositionScheduler.cs" />
     <Compile Include="src\CoordinateDataHandler.cs" />
     <Compile Include="src\Diagnostics.cs" />
     <Compile Include="src\Enums.cs" />
+    <Compile Include="src\LegacyClothingMaskCatalog.cs" />
+    <Compile Include="src\LegacyCharacterStateAdapter.cs" />
+    <Compile Include="src\LegacyManifestParser.cs" />
+    <Compile Include="src\LegacyMaskDescriptor.cs" />
+    <Compile Include="src\LegacyMaskTextureCompiler.cs" />
+    <Compile Include="src\LegacyPortableLayerConverter.cs" />
+    <Compile Include="src\LegacyResolvedMask.cs" />
+    <Compile Include="src\LayerEligibilityEvaluator.cs" />
     <Compile Include="src\MakerInterface.cs" />
     <Compile Include="src\MaskColorDecoder.cs" />
+    <Compile Include="src\MaskCompositionResources.cs" />
     <Compile Include="src\MaskComposer.cs" />
+    <Compile Include="src\MaskDimensions.cs" />
+    <Compile Include="src\MaskPngDecodeService.cs" />
     <Compile Include="src\MaskPreviewBuilder.cs" />
     <Compile Include="src\MaskResolutionConverter.cs" />
+    <Compile Include="src\NakayChaAlphaMaskProvider.cs" />
+    <Compile Include="src\NativeMaskDecodePipeline.cs" />
+    <Compile Include="src\NativeMaskLayerStore.cs" />
     <Compile Include="src\Plugin.cs" />
     <Compile Include="src\PluginConfig.cs" />
     <Compile Include="src\PngMaskValidator.cs" />
+    <Compile Include="src\PerformanceCounters.cs" />
+    <Compile Include="src\PersistableLayerSelector.cs" />
+    <Compile Include="src\PortableMaskFormatLimits.cs" />
+    <Compile Include="src\PortableMaskPngValidator.cs" />
+    <Compile Include="src\OutfitPayloadRouter.cs" />
     <Compile Include="src\Rgba32.cs" />
     <Compile Include="src\SemanticMask.cs" />
+    <Compile Include="src\SideloaderLegacyManifestSourceReader.cs" />
     <Compile Include="src\TexturePixelReader.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

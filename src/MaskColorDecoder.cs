@@ -61,6 +61,18 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
+            if (options.GradientHandlingMode != GradientHandlingMode.StrictCategorical)
+            {
+                return TryDecodeContinuousNative(
+                    pixels,
+                    width,
+                    height,
+                    options,
+                    out semanticMask,
+                    out statistics,
+                    out error);
+            }
+
             int tolerance = options.ColorTolerance;
             if (tolerance < 0)
             {
@@ -136,6 +148,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         {
             normalizedPixelCount = 0;
             if (options == null ||
+                options.GradientHandlingMode != GradientHandlingMode.StrictCategorical ||
                 options.ClassificationMode != ColorClassificationMode.Threshold ||
                 options.UnknownColorPolicy != UnknownColorPolicy.RejectMask)
             {
@@ -258,6 +271,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             Rgba32[] pixels)
         {
             if (options == null || statistics == null ||
+                options.GradientHandlingMode != GradientHandlingMode.StrictCategorical ||
                 options.ClassificationMode != ColorClassificationMode.Threshold ||
                 options.UnknownColorPolicy != UnknownColorPolicy.RejectMask ||
                 statistics.BluePixels != 0 || statistics.UnknownPixels <= 0 ||
@@ -299,6 +313,242 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             return true;
+        }
+
+        public static bool TryDecodeLegacyRgbStateCoverage(
+            Rgba32[] pixels,
+            int width,
+            int height,
+            out SemanticMask semanticMask,
+            out MaskColorStatistics statistics,
+            out string error)
+        {
+            semanticMask = null;
+            statistics = new MaskColorStatistics();
+            error = null;
+            if (pixels == null)
+            {
+                error = "Pixel data is missing.";
+                return false;
+            }
+
+            if (width <= 0 || height <= 0 || pixels.Length != checked(width * height))
+            {
+                error = "Pixel data does not match the declared dimensions.";
+                return false;
+            }
+
+            byte[] state0 = new byte[pixels.Length];
+            byte[] state1 = new byte[pixels.Length];
+            byte[] state2 = new byte[pixels.Length];
+            for (int index = 0; index < pixels.Length; index++)
+            {
+                Rgba32 pixel = pixels[index];
+                state0[index] = pixel.R;
+                state1[index] = pixel.G;
+                state2[index] = pixel.B;
+                statistics.LegacyStatePixels++;
+                if ((pixel.R != 0 && pixel.R != byte.MaxValue) ||
+                    (pixel.G != 0 && pixel.G != byte.MaxValue) ||
+                    (pixel.B != 0 && pixel.B != byte.MaxValue))
+                {
+                    statistics.EdgePixels++;
+                }
+
+                if (pixel.A != 0 && pixel.A != byte.MaxValue)
+                {
+                    statistics.UnexpectedAlphaPixels++;
+                }
+            }
+
+            semanticMask = SemanticMask.FromStateCoverageOwned(
+                width,
+                height,
+                state0,
+                state1,
+                state2);
+            return true;
+        }
+
+        private static bool TryDecodeContinuousNative(
+            Rgba32[] pixels,
+            int width,
+            int height,
+            MaskDecodeOptions options,
+            out SemanticMask semanticMask,
+            out MaskColorStatistics statistics,
+            out string error)
+        {
+            semanticMask = null;
+            statistics = new MaskColorStatistics();
+            error = null;
+            byte[] state0 = new byte[pixels.Length];
+            byte[] state1 = new byte[pixels.Length];
+            byte[] state2 = new byte[pixels.Length];
+            for (int index = 0; index < pixels.Length; index++)
+            {
+                Rgba32 pixel = pixels[index];
+                if (pixel.A != 0 && pixel.A != byte.MaxValue)
+                {
+                    statistics.UnexpectedAlphaPixels++;
+                }
+
+                ColorCategory exact = GetExactCategorical(pixel);
+                if (exact != ColorCategory.Unknown)
+                {
+                    AddRecognizedCategory(exact, statistics);
+                    SetCategoricalCoverage(
+                        RuleForCategory(exact),
+                        index,
+                        state0,
+                        state1,
+                        state2);
+                    continue;
+                }
+
+                bool blueDominant = IsBlueDominant(pixel, ClampTolerance(options.ColorTolerance));
+                if (pixel.B != 0)
+                {
+                    statistics.PixelsWithBlueData++;
+                    if (blueDominant)
+                    {
+                        statistics.BluePixels++;
+                    }
+                    else
+                    {
+                        statistics.UnknownPixels++;
+                        statistics.PackedDataPixels++;
+                    }
+
+                    SetUnknownCoverage(
+                        options.UnknownColorPolicy,
+                        index,
+                        state0,
+                        state1,
+                        state2);
+                    continue;
+                }
+
+                bool safeAuto = pixel.R <= pixel.G;
+                if (options.GradientHandlingMode == GradientHandlingMode.Auto && !safeAuto)
+                {
+                    statistics.UnknownPixels++;
+                    statistics.AmbiguousPixels++;
+                    SetUnknownCoverage(
+                        options.UnknownColorPolicy,
+                        index,
+                        state0,
+                        state1,
+                        state2);
+                    continue;
+                }
+
+                state0[index] = (byte)(byte.MaxValue - pixel.R);
+                state1[index] = (byte)(byte.MaxValue - pixel.G);
+                state2[index] = state1[index];
+                statistics.ContinuousPixels++;
+                if ((pixel.R != 0 && pixel.R != byte.MaxValue) ||
+                    (pixel.G != 0 && pixel.G != byte.MaxValue))
+                {
+                    statistics.EdgePixels++;
+                }
+            }
+
+            if (options.UnknownColorPolicy == UnknownColorPolicy.RejectMask &&
+                (statistics.UnknownPixels != 0 || statistics.BluePixels != 0))
+            {
+                error = string.Format(
+                    "Mask contains incompatible native pixels (blue={0}, unknown={1}, ambiguous={2}, packed={3}).",
+                    statistics.BluePixels,
+                    statistics.UnknownPixels,
+                    statistics.AmbiguousPixels,
+                    statistics.PackedDataPixels);
+                return false;
+            }
+
+            semanticMask = SemanticMask.FromStateCoverageOwned(
+                width,
+                height,
+                state0,
+                state1,
+                state2);
+            return true;
+        }
+
+        private static ColorCategory GetExactCategorical(Rgba32 pixel)
+        {
+            if (pixel.R == 255 && pixel.G == 255 && pixel.B == 0)
+            {
+                return ColorCategory.Yellow;
+            }
+
+            if (pixel.R == 0 && pixel.G == 255 && pixel.B == 0)
+            {
+                return ColorCategory.Green;
+            }
+
+            if (pixel.R == 76 && pixel.G == 255 && pixel.B == 0)
+            {
+                return ColorCategory.Green;
+            }
+
+            if (pixel.R == 0 && pixel.G == 0 && pixel.B == 0)
+            {
+                return ColorCategory.Black;
+            }
+
+            if (pixel.R == 255 && pixel.G == 0 && pixel.B == 0)
+            {
+                return ColorCategory.Red;
+            }
+
+            return ColorCategory.Unknown;
+        }
+
+        private static void SetCategoricalCoverage(
+            MaskPixelRule rule,
+            int index,
+            byte[] state0,
+            byte[] state1,
+            byte[] state2)
+        {
+            if (rule == MaskPixelRule.HideWhenFull || rule == MaskPixelRule.HideWhenNotOff)
+            {
+                state0[index] = byte.MaxValue;
+            }
+
+            if (rule == MaskPixelRule.HideWhenNotOff)
+            {
+                state1[index] = byte.MaxValue;
+                state2[index] = byte.MaxValue;
+            }
+        }
+
+        private static void SetUnknownCoverage(
+            UnknownColorPolicy policy,
+            int index,
+            byte[] state0,
+            byte[] state1,
+            byte[] state2)
+        {
+            if (policy != UnknownColorPolicy.HideWhenNotOff)
+            {
+                return;
+            }
+
+            state0[index] = byte.MaxValue;
+            state1[index] = byte.MaxValue;
+            state2[index] = byte.MaxValue;
+        }
+
+        private static int ClampTolerance(int tolerance)
+        {
+            if (tolerance < 0)
+            {
+                return 0;
+            }
+
+            return tolerance > 255 ? 255 : tolerance;
         }
 
         private static MaskPixelRule ResolveUnknown(UnknownColorPolicy policy)

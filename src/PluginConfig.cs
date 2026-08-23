@@ -5,16 +5,18 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     public sealed class PluginConfig
     {
         public ConfigEntry<bool> Enabled;
-        public ConfigEntry<int> MinimumResolution;
-        public ConfigEntry<int> MaximumMaskResolution;
         public ConfigEntry<int> DefaultOutputResolution;
-        public ConfigEntry<int> MaximumPngBytes;
         public ConfigEntry<ColorClassificationMode> ColorClassification;
         public ConfigEntry<int> ColorTolerance;
         public ConfigEntry<UnknownColorPolicy> UnknownColorPolicy;
+        public ConfigEntry<GradientHandlingMode> GradientHandling;
         public ConfigEntry<UnknownStatePolicy> UnknownStatePolicy;
-        public ConfigEntry<MaskBindingMode> MaskBindingMode;
         public ConfigEntry<bool> AllowUnauditedChaAlphaMask;
+        public ConfigEntry<bool> EnableNakayLegacyCompatibility;
+        public ConfigEntry<bool> AutoConvertNakayLegacyMasks;
+        public ConfigEntry<bool> LegacyIndexAutoRefresh;
+        public ConfigEntry<int> LegacyCacheMemoryLimitMegabytes;
+        public ConfigEntry<bool> LegacyDiagnostics;
         public ConfigEntry<bool> DebugLogging;
         public ConfigEntry<bool> LogStateChanges;
         public ConfigEntry<bool> LogComposition;
@@ -26,14 +28,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             PluginConfig result = new PluginConfig();
             result.Enabled = config.Bind("General", "Enabled", true,
                 "Global kill-switch. Disabling restores the upstream body material without deleting saved masks.");
-            result.MinimumResolution = config.Bind("Masks", "Minimum resolution", 128,
-                "Minimum accepted square power-of-two PNG size.");
-            result.MaximumMaskResolution = config.Bind("Masks", "MaximumMaskResolution", 2048,
-                "Maximum accepted PNG and composed texture dimension. A larger upstream mask is not downsampled; composition yields safely.");
             result.DefaultOutputResolution = config.Bind("Masks", "Default output resolution", 512,
                 "Composition size when the current vanilla/external body mask has no usable size.");
-            result.MaximumPngBytes = config.Bind("Masks", "Maximum PNG bytes", 16 * 1024 * 1024,
-                "Per-slot safety limit for embedded source PNG bytes.");
             result.ColorClassification = config.Bind("Masks", "Color classification",
                 ColorClassificationMode.Threshold,
                 "Exact, tolerance threshold, or nearest categorical color decoding.");
@@ -42,17 +38,44 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             result.UnknownColorPolicy = config.Bind("Masks", "UnknownColorPolicy",
                 global::NightOwlZzz.Koikatsu.BodyMaskLayers.UnknownColorPolicy.RejectMask,
                 "RejectMask is the safe default. Blue is considered unsupported/packed data.");
+            result.GradientHandling = config.Bind(
+                "Masks",
+                "Gradient Handling",
+                GradientHandlingMode.Auto,
+                "Auto preserves safe continuous R/G coverage, PreserveContinuous accepts explicit R/G coverage, and StrictCategorical keeps the original palette-only decoder.");
             result.UnknownStatePolicy = config.Bind("States", "UnknownStatePolicy",
                 global::NightOwlZzz.Koikatsu.BodyMaskLayers.UnknownStatePolicy.NoContribution,
                 "Behavior for clothing state values outside the confirmed vanilla 0-3 range.");
-            result.MaskBindingMode = config.Bind("Binding", "MaskBindingMode",
-                global::NightOwlZzz.Koikatsu.BodyMaskLayers.MaskBindingMode.SlotAndItem,
-                "SlotAndItem prevents a mask from following an unrelated replacement item. SlotOnly is advanced.");
             result.AllowUnauditedChaAlphaMask = config.Bind(
                 "Compatibility",
                 "Allow unaudited ChaAlphaMask versions",
                 false,
                 "If false, custom composition stays inactive when a ChaAlphaMask version other than audited 1.0.0 is detected.");
+            result.EnableNakayLegacyCompatibility = config.Bind(
+                "Compatibility",
+                "Enable Nakay Legacy Compatibility",
+                true,
+                "Resolve KK_ChaAlphaMask manifest textures directly when the old plugin is absent. Never modifies zipmods.");
+            result.AutoConvertNakayLegacyMasks = config.Bind(
+                "Compatibility",
+                "Auto Convert Nakay Legacy Masks",
+                true,
+                "Silently create a portable native BML2 layer from a resolved legacy source without overwriting an existing native layer. Saving the card or coordinate persists the copy.");
+            result.LegacyIndexAutoRefresh = config.Bind(
+                "Compatibility",
+                "Legacy Index Auto Refresh",
+                true,
+                "Build the session metadata index from Sideloader manifests once during startup.");
+            result.LegacyCacheMemoryLimitMegabytes = config.Bind(
+                "Compatibility",
+                "Legacy Cache Memory Limit MB",
+                128,
+                "Maximum memory for shared compiled legacy masks. Values are clamped to 16-1024 MB.");
+            result.LegacyDiagnostics = config.Bind(
+                "Diagnostics",
+                "Legacy Diagnostics",
+                false,
+                "Enable numeric legacy provider/cache counters. String formatting only occurs in explicit diagnostic dumps.");
             result.DebugLogging = config.Bind("Diagnostics", "DebugLogging", false,
                 "Log state, binding and composition decisions.");
             result.LogStateChanges = config.Bind("Diagnostics", "LogStateChanges", false,
@@ -73,28 +96,22 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             {
                 ClassificationMode = ColorClassification.Value,
                 ColorTolerance = ColorTolerance.Value,
-                UnknownColorPolicy = UnknownColorPolicy.Value
+                UnknownColorPolicy = UnknownColorPolicy.Value,
+                GradientHandlingMode = GradientHandling.Value
             };
-        }
-
-        public int GetMaximumResolution()
-        {
-            return Clamp(MaximumMaskResolution.Value, 128, 4096);
-        }
-
-        public int GetMinimumResolution()
-        {
-            return Clamp(MinimumResolution.Value, 1, GetMaximumResolution());
         }
 
         public int GetDefaultOutputResolution()
         {
-            return Clamp(DefaultOutputResolution.Value, GetMinimumResolution(), GetMaximumResolution());
+            return Clamp(
+                DefaultOutputResolution.Value,
+                1,
+                PortableMaskFormatLimits.MaximumDimension);
         }
 
-        public int GetMaximumPngBytes()
+        public int GetLegacyCacheMemoryLimitMegabytes()
         {
-            return Clamp(MaximumPngBytes.Value, 1024, CardDataSerializer.AbsoluteMaximumPngBytes);
+            return Clamp(LegacyCacheMemoryLimitMegabytes.Value, 16, 1024);
         }
 
         public float GetLogIntervalSeconds()

@@ -6,7 +6,60 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
     {
         private static int Main()
         {
-            TestCase[] tests = PureLogicTests.All();
+            TestCase[] pureTests = PureLogicTests.All();
+            TestCase[] infrastructureTests = PerformanceInfrastructureTests.All();
+            TestCase[] gradientTests = GradientCoverageTests.All();
+            TestCase[] legacyCatalogTests = LegacyCatalogTests.All();
+            TestCase[] architectureTests = ArchitectureComponentTests.All();
+            TestCase[] legacySessionTests = CharacterLegacyMaskSessionTests.All();
+            TestCase[] nativeStoreTests = NativeMaskLayerStoreTests.All();
+            TestCase[] nativeDecodePipelineTests = NativeMaskDecodePipelineTests.All();
+            TestCase[] tests = new TestCase[
+                pureTests.Length + infrastructureTests.Length + gradientTests.Length +
+                legacyCatalogTests.Length + architectureTests.Length +
+                legacySessionTests.Length + nativeStoreTests.Length +
+                nativeDecodePipelineTests.Length];
+            Array.Copy(pureTests, 0, tests, 0, pureTests.Length);
+            Array.Copy(infrastructureTests, 0, tests, pureTests.Length, infrastructureTests.Length);
+            Array.Copy(
+                gradientTests,
+                0,
+                tests,
+                pureTests.Length + infrastructureTests.Length,
+                gradientTests.Length);
+            Array.Copy(
+                legacyCatalogTests,
+                0,
+                tests,
+                pureTests.Length + infrastructureTests.Length + gradientTests.Length,
+                legacyCatalogTests.Length);
+            int architectureOffset = pureTests.Length + infrastructureTests.Length +
+                                     gradientTests.Length + legacyCatalogTests.Length;
+            Array.Copy(
+                architectureTests,
+                0,
+                tests,
+                architectureOffset,
+                architectureTests.Length);
+            int legacySessionOffset = architectureOffset + architectureTests.Length;
+            Array.Copy(
+                legacySessionTests,
+                0,
+                tests,
+                legacySessionOffset,
+                legacySessionTests.Length);
+            Array.Copy(
+                nativeStoreTests,
+                0,
+                tests,
+                legacySessionOffset + legacySessionTests.Length,
+                nativeStoreTests.Length);
+            Array.Copy(
+                nativeDecodePipelineTests,
+                0,
+                tests,
+                legacySessionOffset + legacySessionTests.Length + nativeStoreTests.Length,
+                nativeDecodePipelineTests.Length);
             int passed = 0;
             int failed = 0;
 

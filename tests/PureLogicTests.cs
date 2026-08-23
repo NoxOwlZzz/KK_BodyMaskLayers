@@ -7,6 +7,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
 {
     internal static class PureLogicTests
     {
+        private const string LegacySchema1FixtureBase64 =
+            "Qk1MMQEAAAABAAAAAgAAAAAAAQAAAAEAAAEAAAABAwAAAAsAAABsZWdhY3ktaGFzaAUAAAAwLjEuMg4AAABsZWdhY3kgZml4dHVyZQECAAAAawAAAOEQAADSBAAACgAAAGxlZ2FjeS5tb2QEAAAAaXRlbQQAAABJSktM";
+        private const string LegacySchema1FixtureSha256 =
+            "59f02b0530d7eebd7c73a2316f8d9d0f8c92763cd7f9f5a0db2a1405f51eacf6";
+
         public static TestCase[] All()
         {
             return new TestCase[]
@@ -36,17 +41,18 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 new TestCase("format: no base texture and invalid buffers", FormatNoBaseAndErrors),
                 new TestCase("PNG: valid color types and boundary sizes", PngValidTypesAndBounds),
                 new TestCase("PNG: signature and IHDR structure", PngSignatureAndIhdr),
-                new TestCase("PNG: dimensions and power-of-two limits", PngDimensions),
-                new TestCase("PNG: bit depth, color type and byte limit", PngFormatAndByteLimits),
+                new TestCase("PNG: structural dimensions and internal resolution limit", PngDimensions),
+                new TestCase("PNG: bit depth, color type and internal byte limit", PngFormatAndByteLimits),
+                new TestCase("dimensions: representable pixel counts", MaskDimensionPixelCounts),
                 new TestCase("serializer: complete roundtrip", SerializerCompleteRoundTrip),
+                new TestCase("serializer: BML1 golden migration defaults", SerializerLegacySchemaMigration),
                 new TestCase("serializer: multiple, null and duplicate layers", SerializerCollections),
                 new TestCase("serializer: envelope corruption", SerializerEnvelopeCorruption),
                 new TestCase("serializer: exhaustive truncation and layer corruption", SerializerLayerCorruption),
                 new TestCase("serializer: hard limits", SerializerLimits),
                 new TestCase("serializer: SHA-256 and deep clone", HashAndDeepClone),
-                new TestCase("binding: SlotOnly", BindingSlotOnly),
-                new TestCase("binding: SlotAndItem local identity", BindingSlotAndItemLocal),
-                new TestCase("binding: SlotAndItem Sideloader identity", BindingSlotAndItemSideloader)
+                new TestCase("binding: strict local identity", BindingLocalIdentity),
+                new TestCase("binding: strict Sideloader identity", BindingSideloaderIdentity)
             };
         }
 
@@ -1009,7 +1015,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                     new Rgba32(255, 255, 10, 20),
                     new Rgba32(0, 0, 30, 40),
                     new Rgba32(0, 0, 50, 60),
-                    new Rgba32(0, 0, 70, 80)
+                    new Rgba32(255, 0, 70, 80)
                 },
                 output,
                 "Binary body mask output or B/A preservation mismatch.");
@@ -1128,7 +1134,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             for (int i = 0; i < colorTypes.Length; i++)
             {
                 byte[] bytes = BuildPngHeader(64, 64, 8, colorTypes[i]);
-                MaskValidationResult result = PngMaskValidator.Validate(bytes, 32, 1024, bytes.Length);
+                MaskValidationResult result = PngMaskValidator.Validate(bytes);
                 Check.True(result.IsValid, "Supported PNG color type must validate: " + colorTypes[i] + ".");
                 Check.Equal(64, result.Width, "Valid PNG width mismatch.");
                 Check.Equal(64, result.Height, "Valid PNG height mismatch.");
@@ -1136,86 +1142,136 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 Check.Equal(colorTypes[i], result.ColorType, "Valid PNG color type mismatch.");
             }
 
-            MaskValidationResult minimum = PngMaskValidator.Validate(BuildPngHeader(32, 32, 8, 6), 32, 1024, 33);
-            Check.True(minimum.IsValid, "Exact minimum resolution must validate.");
-            MaskValidationResult maximum = PngMaskValidator.Validate(BuildPngHeader(1024, 1024, 8, 6), 32, 1024, 33);
-            Check.True(maximum.IsValid, "Exact maximum resolution must validate.");
+            MaskValidationResult smallest = PngMaskValidator.Validate(
+                BuildPngHeader(1, 1, 8, 6));
+            Check.True(
+                smallest.IsValid,
+                "Resolution 1x1 must validate now that there is no configurable minimum.");
+            MaskValidationResult maximum = PngMaskValidator.Validate(
+                BuildPngHeader(
+                    PortableMaskFormatLimits.MaximumDimension,
+                    PortableMaskFormatLimits.MaximumDimension,
+                    8,
+                    6));
+            Check.True(maximum.IsValid, "The exact internal card-data resolution limit must validate.");
         }
 
         private static void PngSignatureAndIhdr()
         {
-            MaskValidationResult result = PngMaskValidator.Validate(null, 32, 1024, 4096);
+            MaskValidationResult result = PngMaskValidator.Validate(null);
             Check.False(result.IsValid, "Null PNG must fail.");
             Check.Contains("too short", result.Message, "Null PNG diagnostic mismatch.");
 
-            result = PngMaskValidator.Validate(new byte[32], 32, 1024, 4096);
+            result = PngMaskValidator.Validate(new byte[32]);
             Check.False(result.IsValid, "Short PNG must fail.");
 
             byte[] bytes = BuildPngHeader(64, 64, 8, 6);
             bytes[0] = 0;
-            result = PngMaskValidator.Validate(bytes, 32, 1024, 4096);
+            result = PngMaskValidator.Validate(bytes);
             Check.False(result.IsValid, "Bad PNG signature must fail.");
             Check.Contains("signature", result.Message, "Bad-signature diagnostic mismatch.");
 
             bytes = BuildPngHeader(64, 64, 8, 6);
             WriteUInt32BigEndian(bytes, 8, 12);
-            result = PngMaskValidator.Validate(bytes, 32, 1024, 4096);
+            result = PngMaskValidator.Validate(bytes);
             Check.False(result.IsValid, "Non-13 IHDR length must fail.");
             Check.Contains("IHDR", result.Message, "IHDR-length diagnostic mismatch.");
 
             bytes = BuildPngHeader(64, 64, 8, 6);
             bytes[12] = (byte)'X';
-            result = PngMaskValidator.Validate(bytes, 32, 1024, 4096);
+            result = PngMaskValidator.Validate(bytes);
             Check.False(result.IsValid, "Wrong first chunk type must fail.");
             Check.Contains("IHDR", result.Message, "IHDR-type diagnostic mismatch.");
         }
 
         private static void PngDimensions()
         {
-            MaskValidationResult result = PngMaskValidator.Validate(BuildPngHeader(64, 32, 8, 6), 32, 1024, 4096);
+            MaskValidationResult result = PngMaskValidator.Validate(BuildPngHeader(64, 32, 8, 6));
             Check.False(result.IsValid, "Non-square PNG must fail.");
             Check.Contains("square", result.Message, "Non-square diagnostic mismatch.");
 
-            result = PngMaskValidator.Validate(BuildPngHeader(16, 16, 8, 6), 32, 1024, 4096);
-            Check.False(result.IsValid, "Below-minimum PNG must fail.");
-            Check.Contains("outside", result.Message, "Below-minimum diagnostic mismatch.");
+            result = PngMaskValidator.Validate(BuildPngHeader(16, 16, 8, 6));
+            Check.True(result.IsValid, "A mask below the former configurable minimum must validate.");
 
-            result = PngMaskValidator.Validate(BuildPngHeader(2048, 2048, 8, 6), 32, 1024, 4096);
-            Check.False(result.IsValid, "Above-maximum PNG must fail.");
+            result = PngMaskValidator.Validate(BuildPngHeader(2048, 2048, 8, 6));
+            Check.True(result.IsValid, "A mask above the former configurable maximum must validate.");
 
-            result = PngMaskValidator.Validate(BuildPngHeader(96, 96, 8, 6), 32, 1024, 4096);
+            int unsupported = PortableMaskFormatLimits.MaximumDimension * 2;
+            result = PngMaskValidator.Validate(BuildPngHeader(unsupported, unsupported, 8, 6));
+            Check.False(result.IsValid, "A mask above the internal card-data resolution limit must fail.");
+            Check.Contains("card-data resolution", result.Message, "Internal-resolution diagnostic mismatch.");
+
+            result = PngMaskValidator.Validate(BuildPngHeader(96, 96, 8, 6));
             Check.False(result.IsValid, "Non-power-of-two PNG must fail.");
             Check.Contains("power of two", result.Message, "Power-of-two diagnostic mismatch.");
 
-            result = PngMaskValidator.Validate(BuildPngHeader(0, 0, 8, 6), 1, 1024, 4096);
+            result = PngMaskValidator.Validate(BuildPngHeader(0, 0, 8, 6));
             Check.False(result.IsValid, "Zero dimensions must fail.");
 
-            result = PngMaskValidator.Validate(BuildPngHeader(uint.MaxValue, uint.MaxValue, 8, 6), 1, int.MaxValue, 4096);
+            result = PngMaskValidator.Validate(BuildPngHeader(uint.MaxValue, uint.MaxValue, 8, 6));
             Check.False(result.IsValid, "Dimensions above Int32 must fail.");
             Check.Contains("not supported", result.Message, "Oversized-dimension diagnostic mismatch.");
+
+            result = PngMaskValidator.Validate(BuildPngHeader(65536, 65536, 8, 6));
+            Check.False(result.IsValid, "A pixel count above Int32 must fail before decoding.");
+            Check.Contains("represented safely", result.Message, "Pixel-count overflow diagnostic mismatch.");
         }
 
         private static void PngFormatAndByteLimits()
         {
-            MaskValidationResult result = PngMaskValidator.Validate(BuildPngHeader(64, 64, 16, 6), 32, 1024, 4096);
+            MaskValidationResult result = PngMaskValidator.Validate(BuildPngHeader(64, 64, 16, 6));
             Check.False(result.IsValid, "16-bit PNG must fail validation.");
             Check.Contains("8-bit", result.Message, "Bit-depth diagnostic mismatch.");
 
             byte[] invalidTypes = { 0, 1, 5, 7, 255 };
             for (int i = 0; i < invalidTypes.Length; i++)
             {
-                result = PngMaskValidator.Validate(BuildPngHeader(64, 64, 8, invalidTypes[i]), 32, 1024, 4096);
+                result = PngMaskValidator.Validate(BuildPngHeader(64, 64, 8, invalidTypes[i]));
                 Check.False(result.IsValid, "Unsupported PNG color type must fail: " + invalidTypes[i] + ".");
                 Check.Contains("color type", result.Message, "Color-type diagnostic mismatch.");
             }
 
-            byte[] bytes = BuildPngHeader(64, 64, 8, 6);
-            result = PngMaskValidator.Validate(bytes, 32, 1024, bytes.Length - 1);
-            Check.False(result.IsValid, "PNG above byte limit must fail.");
-            Check.Contains("byte limit", result.Message, "Byte-limit diagnostic mismatch.");
+            byte[] header = BuildPngHeader(64, 64, 8, 6);
+            byte[] bytes = new byte[PortableMaskFormatLimits.MaximumPngBytes];
+            Buffer.BlockCopy(header, 0, bytes, 0, header.Length);
+            result = PngMaskValidator.Validate(bytes);
+            Check.True(
+                result.IsValid,
+                "The exact internal byte limit must validate, including files above the removed configurable limit.");
 
-            result = PngMaskValidator.Validate(bytes, 32, 1024, bytes.Length);
-            Check.True(result.IsValid, "PNG exactly at byte limit must validate.");
+            Array.Resize<byte>(ref bytes, PortableMaskFormatLimits.MaximumPngBytes + 1);
+            result = PngMaskValidator.Validate(bytes);
+            Check.False(result.IsValid, "A PNG above the internal card-data byte limit must fail.");
+            Check.Contains("card-data size", result.Message, "Internal-byte-limit diagnostic mismatch.");
+        }
+
+        private static void MaskDimensionPixelCounts()
+        {
+            int pixelCount;
+            Check.False(
+                MaskDimensions.TryGetPixelCount(0, 1, out pixelCount),
+                "Zero width must not produce a pixel count.");
+            Check.False(
+                MaskDimensions.TryGetPixelCount(1, 0, out pixelCount),
+                "Zero height must not produce a pixel count.");
+            Check.False(
+                MaskDimensions.TryGetPixelCount(-1, 1, out pixelCount),
+                "Negative dimensions must not produce a pixel count.");
+            Check.True(
+                MaskDimensions.TryGetPixelCount(1, 1, out pixelCount),
+                "A single pixel must be representable.");
+            Check.Equal(1, pixelCount, "Single-pixel count mismatch.");
+            Check.True(
+                MaskDimensions.TryGetPixelCount(46340, 46340, out pixelCount),
+                "The largest equal dimensions whose product fits Int32 must be representable.");
+            Check.Equal(2147395600, pixelCount, "Large representable pixel count mismatch.");
+            Check.False(
+                MaskDimensions.TryGetPixelCount(46341, 46341, out pixelCount),
+                "An overflowing square pixel count must be rejected.");
+            Check.Equal(0, pixelCount, "Rejected dimensions must clear the output count.");
+            Check.False(
+                MaskDimensions.TryGetPixelCount(int.MaxValue, 2, out pixelCount),
+                "An overflowing rectangular pixel count must be rejected.");
         }
 
         private static void SerializerCompleteRoundTrip()
@@ -1236,8 +1292,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 67890,
                 "NightOwlZzz.mod");
             layer.BoundItemIdentity.DisplayName = "Prenda ñ";
+            layer.SourceContract = MaskSourceContract.NakayRgbStateCoverage;
+            layer.GradientHandlingMode = GradientHandlingMode.PreserveContinuous;
+            layer.SourceProviderId = "nakay.kk.ChaAlphaMask";
+            layer.SourceFingerprint = "f0e1d2c3b4a5";
+            layer.SourceAsset = "abdata/list/characustom/example.unity3d#mab_55";
 
             byte[] payload = CardDataSerializer.Serialize(new ClothingMaskLayerData[] { layer });
+            Check.Equal(CardDataSerializer.SchemaVersion, ReadInt32LittleEndian(payload, 4), "Writer schema mismatch.");
             Dictionary<ClothingSlot, ClothingMaskLayerData> layers;
             string error;
             bool accepted = CardDataSerializer.TryDeserialize(payload, out layers, out error);
@@ -1255,6 +1317,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(layer.OptionalStatePolicy, restored.OptionalStatePolicy, "Roundtrip state policy mismatch.");
             Check.Equal(layer.CreatedWithPluginVersion, restored.CreatedWithPluginVersion, "Roundtrip plugin version mismatch.");
             Check.Equal(layer.LastValidationResult, restored.LastValidationResult, "Roundtrip validation text mismatch.");
+            Check.Equal(layer.SourceContract, restored.SourceContract, "Roundtrip source contract mismatch.");
+            Check.Equal(layer.GradientHandlingMode, restored.GradientHandlingMode, "Roundtrip gradient mode mismatch.");
+            Check.Equal(layer.SourceProviderId, restored.SourceProviderId, "Roundtrip source provider mismatch.");
+            Check.Equal(layer.SourceFingerprint, restored.SourceFingerprint, "Roundtrip source fingerprint mismatch.");
+            Check.Equal(layer.SourceAsset, restored.SourceAsset, "Roundtrip source asset mismatch.");
             Check.SequenceEqual(layer.OriginalPngBytes, restored.OriginalPngBytes, "Roundtrip PNG bytes mismatch.");
             Check.NotSame(layer.OriginalPngBytes, restored.OriginalPngBytes, "Roundtrip PNG must be a separate array.");
 
@@ -1265,6 +1332,102 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(layer.BoundItemIdentity.OriginalItemId, restored.BoundItemIdentity.OriginalItemId, "Identity original ID mismatch.");
             Check.Equal(layer.BoundItemIdentity.SideloaderGuid, restored.BoundItemIdentity.SideloaderGuid, "Identity GUID mismatch.");
             Check.Equal(layer.BoundItemIdentity.DisplayName, restored.BoundItemIdentity.DisplayName, "Identity display name mismatch.");
+        }
+
+        private static void SerializerLegacySchemaMigration()
+        {
+            ClothingMaskLayerData legacy = Layer(ClothingSlot.Bra, 73);
+            legacy.Enabled = false;
+            legacy.Width = 256;
+            legacy.Height = 256;
+            legacy.ColorFormatVersion = 1;
+            legacy.OptionalStatePolicy = UnknownStatePolicy.PreserveLastKnown;
+            legacy.Hash = "legacy-hash";
+            legacy.CreatedWithPluginVersion = "0.1.2";
+            legacy.LastValidationResult = "legacy fixture";
+            legacy.BoundItemIdentity = Identity(ClothingSlot.Bra, 107, 4321, 1234, "legacy.mod");
+
+            byte[] fixture = Convert.FromBase64String(LegacySchema1FixtureBase64);
+            Check.Equal(
+                LegacySchema1FixtureSha256,
+                HashUtility.Sha256(fixture),
+                "Pinned BML1 fixture bytes changed.");
+            Check.Equal(
+                CardDataSerializer.LegacySchemaVersion,
+                ReadInt32LittleEndian(fixture, 4),
+                "Fixture schema mismatch.");
+
+            Dictionary<ClothingSlot, ClothingMaskLayerData> layers;
+            string error;
+            Check.True(
+                CardDataSerializer.TryDeserialize(fixture, out layers, out error),
+                "BML1 fixture must load unchanged: " + error);
+            ClothingMaskLayerData restored = layers[ClothingSlot.Bra];
+            Check.Equal(legacy.Enabled, restored.Enabled, "BML1 enabled flag mismatch.");
+            Check.Equal(legacy.Width, restored.Width, "BML1 width mismatch.");
+            Check.Equal(legacy.Height, restored.Height, "BML1 height mismatch.");
+            Check.Equal(legacy.Hash, restored.Hash, "BML1 hash mismatch.");
+            Check.Equal(legacy.OptionalStatePolicy, restored.OptionalStatePolicy, "BML1 policy mismatch.");
+            Check.SequenceEqual(legacy.OriginalPngBytes, restored.OriginalPngBytes, "BML1 original PNG mismatch.");
+            Check.Equal(
+                MaskSourceContract.Native,
+                restored.SourceContract,
+                "BML1 must migrate to the native source contract.");
+            Check.Equal(
+                GradientHandlingMode.StrictCategorical,
+                restored.GradientHandlingMode,
+                "BML1 must preserve the historical categorical interpretation.");
+            Check.Null(restored.SourceProviderId, "BML1 must not invent a source provider.");
+            Check.Null(restored.SourceFingerprint, "BML1 must not invent a source fingerprint.");
+            Check.Null(restored.SourceAsset, "BML1 must not invent a source asset.");
+
+            byte[] migrated = CardDataSerializer.Serialize(layers.Values);
+            Check.Equal(
+                CardDataSerializer.SchemaVersion,
+                ReadInt32LittleEndian(migrated, 4),
+                "Migrated data must write BML2.");
+            Check.SequenceEqual(
+                legacy.OriginalPngBytes,
+                layers[ClothingSlot.Bra].OriginalPngBytes,
+                "Migration must not replace or compile the source PNG.");
+
+            Dictionary<ClothingSlot, ClothingMaskLayerData> migratedLayers;
+            Check.True(
+                CardDataSerializer.TryDeserialize(migrated, out migratedLayers, out error),
+                "Migrated BML2 payload must deserialize: " + error);
+            ClothingMaskLayerData migratedLayer = migratedLayers[ClothingSlot.Bra];
+            Check.Equal(restored.Slot, migratedLayer.Slot, "Migrated slot mismatch.");
+            Check.Equal(restored.Enabled, migratedLayer.Enabled, "Migrated enabled mismatch.");
+            Check.Equal(restored.Width, migratedLayer.Width, "Migrated width mismatch.");
+            Check.Equal(restored.Height, migratedLayer.Height, "Migrated height mismatch.");
+            Check.Equal(restored.ColorFormatVersion, migratedLayer.ColorFormatVersion, "Migrated format mismatch.");
+            Check.Equal(restored.OptionalStatePolicy, migratedLayer.OptionalStatePolicy, "Migrated policy mismatch.");
+            Check.Equal(restored.Hash, migratedLayer.Hash, "Migrated hash mismatch.");
+            Check.Equal(restored.CreatedWithPluginVersion, migratedLayer.CreatedWithPluginVersion, "Migrated creator mismatch.");
+            Check.Equal(restored.LastValidationResult, migratedLayer.LastValidationResult, "Migrated validation mismatch.");
+            Check.Equal(restored.SourceContract, migratedLayer.SourceContract, "Migrated source contract mismatch.");
+            Check.Equal(restored.GradientHandlingMode, migratedLayer.GradientHandlingMode, "Migrated gradient mode mismatch.");
+            Check.Null(migratedLayer.SourceProviderId, "Migrated source provider must remain null.");
+            Check.Null(migratedLayer.SourceFingerprint, "Migrated source fingerprint must remain null.");
+            Check.Null(migratedLayer.SourceAsset, "Migrated source asset must remain null.");
+            Check.SequenceEqual(restored.OriginalPngBytes, migratedLayer.OriginalPngBytes, "Migrated PNG mismatch.");
+            Check.Equal(restored.BoundItemIdentity.Slot, migratedLayer.BoundItemIdentity.Slot, "Migrated identity slot mismatch.");
+            Check.Equal(restored.BoundItemIdentity.Category, migratedLayer.BoundItemIdentity.Category, "Migrated identity category mismatch.");
+            Check.Equal(restored.BoundItemIdentity.LocalItemId, migratedLayer.BoundItemIdentity.LocalItemId, "Migrated local ID mismatch.");
+            Check.Equal(restored.BoundItemIdentity.OriginalItemId, migratedLayer.BoundItemIdentity.OriginalItemId, "Migrated original ID mismatch.");
+            Check.Equal(restored.BoundItemIdentity.SideloaderGuid, migratedLayer.BoundItemIdentity.SideloaderGuid, "Migrated identity GUID mismatch.");
+
+            for (int length = 0; length < fixture.Length; length++)
+            {
+                Dictionary<ClothingSlot, ClothingMaskLayerData> truncatedLayers;
+                string truncatedError;
+                Check.False(
+                    CardDataSerializer.TryDeserialize(
+                        Prefix(fixture, length),
+                        out truncatedLayers,
+                        out truncatedError),
+                    "Every strict BML1 fixture prefix must fail; length=" + length + ".");
+            }
         }
 
         private static void SerializerCollections()
@@ -1350,9 +1513,29 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             }
 
             byte[] corrupt = Clone(valid);
-            WriteInt32LittleEndian(corrupt, 12, 99);
+            WriteInt32LittleEndian(corrupt, 16, 99);
             Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "Unknown slot must fail.");
             Check.Contains("Unknown clothing slot", error, "Unknown-slot diagnostic mismatch.");
+
+            corrupt = Clone(valid);
+            WriteInt32LittleEndian(corrupt, 12, 0);
+            Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "Zero record length must fail.");
+            Check.Contains("record length", error, "Zero-record diagnostic mismatch.");
+
+            corrupt = Clone(valid);
+            WriteInt32LittleEndian(corrupt, 12, CardDataSerializer.MaximumSerializedLayerBytes + 1);
+            Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "Oversized record length must fail.");
+
+            int[] provenanceOffsets = FindV2ProvenanceOffsets(valid);
+            corrupt = Clone(valid);
+            WriteInt32LittleEndian(corrupt, provenanceOffsets[0], 99);
+            Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "Unknown source contract must fail.");
+            Check.Contains("source contract", error, "Source-contract diagnostic mismatch.");
+
+            corrupt = Clone(valid);
+            WriteInt32LittleEndian(corrupt, provenanceOffsets[1], 99);
+            Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "Unknown gradient mode must fail.");
+            Check.Contains("gradient handling mode", error, "Gradient-mode diagnostic mismatch.");
 
             int pngLengthOffset = valid.Length - layer.OriginalPngBytes.Length - 4;
             corrupt = Clone(valid);
@@ -1369,12 +1552,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "PNG length beyond remaining payload must fail.");
 
             corrupt = Clone(valid);
-            corrupt[34] = 0xFF;
+            corrupt[38] = 0xFF;
             Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "Invalid UTF-8 must fail.");
             Check.Contains("could not be read", error, "Invalid-UTF8 diagnostic mismatch.");
 
             corrupt = Clone(valid);
-            WriteInt32LittleEndian(corrupt, 30, 4097);
+            WriteInt32LittleEndian(corrupt, 34, 4097);
             Check.False(CardDataSerializer.TryDeserialize(corrupt, out layers, out error), "Oversized serialized string length must fail.");
             Check.Contains("string length", error, "Oversized-string diagnostic mismatch.");
         }
@@ -1421,15 +1604,50 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { stringLayer }); },
                 "A string above 4096 UTF-8 bytes must fail.");
 
+            ClothingMaskLayerData provenanceLayer = Layer(ClothingSlot.Top, 8);
+            provenanceLayer.SourceProviderId = new string('p', CardDataSerializer.MaximumProviderIdBytes);
+            provenanceLayer.SourceFingerprint = new string('f', CardDataSerializer.MaximumFingerprintBytes);
+            provenanceLayer.SourceAsset = new string('a', CardDataSerializer.MaximumStringBytes);
+            CardDataSerializer.Serialize(new ClothingMaskLayerData[] { provenanceLayer });
+            provenanceLayer.SourceProviderId = new string('p', CardDataSerializer.MaximumProviderIdBytes + 1);
+            Check.Throws<IOException>(
+                delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { provenanceLayer }); },
+                "Provider ID above its byte limit must fail.");
+            provenanceLayer.SourceProviderId = null;
+            provenanceLayer.SourceFingerprint = new string('f', CardDataSerializer.MaximumFingerprintBytes + 1);
+            Check.Throws<IOException>(
+                delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { provenanceLayer }); },
+                "Fingerprint above its byte limit must fail.");
+            provenanceLayer.SourceFingerprint = null;
+            provenanceLayer.SourceAsset = new string('a', CardDataSerializer.MaximumStringBytes + 1);
+            Check.Throws<IOException>(
+                delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { provenanceLayer }); },
+                "Source asset above its byte limit must fail.");
+
+            ClothingMaskLayerData invalidMetadata = Layer(ClothingSlot.Top, 9);
+            invalidMetadata.Width = 0;
+            Check.Throws<IOException>(
+                delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { invalidMetadata }); },
+                "Zero serialized resolution must fail.");
+            invalidMetadata.Width = PortableMaskFormatLimits.MaximumDimension + 1;
+            Check.Throws<IOException>(
+                delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { invalidMetadata }); },
+                "Resolution above the absolute limit must fail.");
+            invalidMetadata.Width = 64;
+            invalidMetadata.ColorFormatVersion = 0;
+            Check.Throws<IOException>(
+                delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { invalidMetadata }); },
+                "Non-positive color format version must fail.");
+
             ClothingMaskLayerData maximumPngLayer = Layer(ClothingSlot.Top, 3);
-            maximumPngLayer.OriginalPngBytes = new byte[CardDataSerializer.AbsoluteMaximumPngBytes];
+            maximumPngLayer.OriginalPngBytes = new byte[PortableMaskFormatLimits.MaximumPngBytes];
             byte[] maximumPngPayload = CardDataSerializer.Serialize(new ClothingMaskLayerData[] { maximumPngLayer });
             Check.True(
-                maximumPngPayload.Length > CardDataSerializer.AbsoluteMaximumPngBytes,
+                maximumPngPayload.Length > PortableMaskFormatLimits.MaximumPngBytes,
                 "PNG exactly at the absolute byte limit must serialize.");
 
             maximumPngPayload = null;
-            maximumPngLayer.OriginalPngBytes = new byte[CardDataSerializer.AbsoluteMaximumPngBytes + 1];
+            maximumPngLayer.OriginalPngBytes = new byte[PortableMaskFormatLimits.MaximumPngBytes + 1];
             Check.Throws<IOException>(
                 delegate { CardDataSerializer.Serialize(new ClothingMaskLayerData[] { maximumPngLayer }); },
                 "PNG above the absolute byte limit must fail.");
@@ -1447,11 +1665,21 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
 
             ClothingMaskLayerData original = Layer(ClothingSlot.Bra, 44);
             original.BoundItemIdentity = Identity(ClothingSlot.Bra, 107, 100, 200, "guid");
+            original.SourceContract = MaskSourceContract.NakayRgbStateCoverage;
+            original.GradientHandlingMode = GradientHandlingMode.PreserveContinuous;
+            original.SourceProviderId = "provider";
+            original.SourceFingerprint = "fingerprint";
+            original.SourceAsset = "asset";
             ClothingMaskLayerData clone = original.DeepClone();
             Check.NotSame(original, clone, "Layer clone must be a new object.");
             Check.NotSame(original.OriginalPngBytes, clone.OriginalPngBytes, "Layer clone must copy PNG bytes.");
             Check.NotSame(original.BoundItemIdentity, clone.BoundItemIdentity, "Layer clone must copy identity.");
             Check.SequenceEqual(original.OriginalPngBytes, clone.OriginalPngBytes, "Layer clone PNG mismatch.");
+            Check.Equal(original.SourceContract, clone.SourceContract, "Layer clone source contract mismatch.");
+            Check.Equal(original.GradientHandlingMode, clone.GradientHandlingMode, "Layer clone gradient mode mismatch.");
+            Check.Equal(original.SourceProviderId, clone.SourceProviderId, "Layer clone provider mismatch.");
+            Check.Equal(original.SourceFingerprint, clone.SourceFingerprint, "Layer clone fingerprint mismatch.");
+            Check.Equal(original.SourceAsset, clone.SourceAsset, "Layer clone asset mismatch.");
 
             clone.OriginalPngBytes[0]++;
             clone.BoundItemIdentity.LocalItemId++;
@@ -1468,70 +1696,51 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Null(noOptionalClone.OriginalPngBytes, "Null PNG must remain null in clone.");
         }
 
-        private static void BindingSlotOnly()
-        {
-            ClothingItemIdentity bound = Identity(ClothingSlot.Socks, 112, 100, 200, null);
-            ClothingItemIdentity current = Identity(ClothingSlot.Socks, 999, 101, 201, "other-guid");
-            Check.True(bound.Matches(current, MaskBindingMode.SlotOnly), "SlotOnly must accept any current item in the same slot.");
-
-            bound.LocalItemId = 0;
-            Check.True(
-                bound.Matches(current, MaskBindingMode.SlotOnly),
-                "SlotOnly is based on current slot occupancy, not the historical bound ID.");
-
-            current.LocalItemId = 0;
-            Check.False(bound.Matches(current, MaskBindingMode.SlotOnly), "SlotOnly must reject an empty current slot.");
-
-            current.LocalItemId = 101;
-            current.Slot = ClothingSlot.Gloves;
-            Check.False(bound.Matches(current, MaskBindingMode.SlotOnly), "SlotOnly must reject another slot.");
-            Check.False(bound.Matches(null, MaskBindingMode.SlotOnly), "SlotOnly must reject null current identity.");
-        }
-
-        private static void BindingSlotAndItemLocal()
+        private static void BindingLocalIdentity()
         {
             ClothingItemIdentity bound = Identity(ClothingSlot.Bottom, 106, 123, 500, null);
             ClothingItemIdentity same = Identity(ClothingSlot.Bottom, 106, 123, 999, string.Empty);
-            Check.True(bound.Matches(same, MaskBindingMode.SlotAndItem), "Local identity must match slot/category/local ID.");
+            Check.True(bound.Matches(same), "Local identity must match slot/category/local ID.");
 
             ClothingItemIdentity differentLocal = Identity(ClothingSlot.Bottom, 106, 124, 500, null);
-            Check.False(bound.Matches(differentLocal, MaskBindingMode.SlotAndItem), "Different local ID must not match.");
+            Check.False(bound.Matches(differentLocal), "Different local ID must not match.");
 
             ClothingItemIdentity differentCategory = Identity(ClothingSlot.Bottom, 107, 123, 500, null);
-            Check.False(bound.Matches(differentCategory, MaskBindingMode.SlotAndItem), "Different category must not match.");
+            Check.False(bound.Matches(differentCategory), "Different category must not match.");
 
             ClothingItemIdentity differentSlot = Identity(ClothingSlot.Top, 106, 123, 500, null);
-            Check.False(bound.Matches(differentSlot, MaskBindingMode.SlotAndItem), "Different slot must not match.");
+            Check.False(bound.Matches(differentSlot), "Different slot must not match.");
 
             ClothingItemIdentity emptyCurrent = Identity(ClothingSlot.Bottom, 106, 0, 500, null);
-            Check.False(bound.Matches(emptyCurrent, MaskBindingMode.SlotAndItem), "Empty current item must not match.");
+            Check.False(bound.Matches(emptyCurrent), "Empty current item must not match.");
+            Check.False(bound.Matches(null), "A null current identity must not match.");
 
             bound.LocalItemId = 0;
-            Check.False(bound.Matches(same, MaskBindingMode.SlotAndItem), "Empty bound item must not match in SlotAndItem.");
+            Check.False(bound.Matches(same), "An empty bound item must not match.");
         }
 
-        private static void BindingSlotAndItemSideloader()
+        private static void BindingSideloaderIdentity()
         {
             ClothingItemIdentity bound = Identity(ClothingSlot.Gloves, 110, 100, 700, "NightOwlZzz.asset");
             ClothingItemIdentity sameStable = Identity(ClothingSlot.Gloves, 110, 999, 700, "NightOwlZzz.asset");
             Check.True(
-                bound.Matches(sameStable, MaskBindingMode.SlotAndItem),
+                bound.Matches(sameStable),
                 "Sideloader GUID + original ID must remain stable across local-ID changes.");
 
             ClothingItemIdentity differentOriginal = Identity(ClothingSlot.Gloves, 110, 100, 701, "NightOwlZzz.asset");
-            Check.False(bound.Matches(differentOriginal, MaskBindingMode.SlotAndItem), "Different Sideloader original ID must not match.");
+            Check.False(bound.Matches(differentOriginal), "Different Sideloader original ID must not match.");
 
             ClothingItemIdentity differentCase = Identity(ClothingSlot.Gloves, 110, 100, 700, "nightowlzzz.asset");
-            Check.False(bound.Matches(differentCase, MaskBindingMode.SlotAndItem), "Sideloader GUID comparison must be ordinal/case-sensitive.");
+            Check.False(bound.Matches(differentCase), "Sideloader GUID comparison must be ordinal/case-sensitive.");
 
             ClothingItemIdentity noGuid = Identity(ClothingSlot.Gloves, 110, 100, 700, null);
-            Check.False(bound.Matches(noGuid, MaskBindingMode.SlotAndItem), "One missing GUID must not fall back to local identity.");
+            Check.False(bound.Matches(noGuid), "One missing GUID must not fall back to local identity.");
 
             ClothingItemIdentity differentCategory = Identity(ClothingSlot.Gloves, 111, 999, 700, "NightOwlZzz.asset");
-            Check.False(bound.Matches(differentCategory, MaskBindingMode.SlotAndItem), "Category mismatch must fail before stable identity.");
+            Check.False(bound.Matches(differentCategory), "Category mismatch must fail before stable identity.");
 
             sameStable.LocalItemId = 0;
-            Check.False(bound.Matches(sameStable, MaskBindingMode.SlotAndItem), "Stable GUID still requires an actual current item.");
+            Check.False(bound.Matches(sameStable), "Stable GUID still requires an actual current item.");
         }
 
         private static MaskDecodeOptions Options(
@@ -1543,6 +1752,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             options.ClassificationMode = mode;
             options.ColorTolerance = tolerance;
             options.UnknownColorPolicy = unknownPolicy;
+            options.GradientHandlingMode = GradientHandlingMode.StrictCategorical;
             return options;
         }
 
@@ -1605,6 +1815,52 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             return identity;
         }
 
+        private static int[] FindV2ProvenanceOffsets(byte[] payload)
+        {
+            using (MemoryStream stream = new MemoryStream(payload, false))
+            using (BinaryReader reader = new BinaryReader(stream, Encoding.UTF8))
+            {
+                stream.Position = 12;
+                reader.ReadInt32();
+                reader.ReadInt32();
+                reader.ReadBoolean();
+                reader.ReadInt32();
+                reader.ReadInt32();
+                reader.ReadInt32();
+                if (reader.ReadBoolean())
+                {
+                    reader.ReadInt32();
+                }
+
+                SkipSerializedString(reader);
+                SkipSerializedString(reader);
+                SkipSerializedString(reader);
+                if (reader.ReadBoolean())
+                {
+                    reader.ReadInt32();
+                    reader.ReadInt32();
+                    reader.ReadInt32();
+                    reader.ReadInt32();
+                    SkipSerializedString(reader);
+                    SkipSerializedString(reader);
+                }
+
+                int sourceContractOffset = (int)stream.Position;
+                reader.ReadInt32();
+                int gradientHandlingOffset = (int)stream.Position;
+                return new int[] { sourceContractOffset, gradientHandlingOffset };
+            }
+        }
+
+        private static void SkipSerializedString(BinaryReader reader)
+        {
+            int length = reader.ReadInt32();
+            if (length > 0)
+            {
+                reader.BaseStream.Position += length;
+            }
+        }
+
         private static byte[] BuildPngHeader(int width, int height, byte bitDepth, byte colorType)
         {
             return BuildPngHeader((uint)width, (uint)height, bitDepth, colorType);
@@ -1644,6 +1900,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             bytes[offset + 1] = (byte)(value >> 8);
             bytes[offset + 2] = (byte)(value >> 16);
             bytes[offset + 3] = (byte)(value >> 24);
+        }
+
+        private static int ReadInt32LittleEndian(byte[] bytes, int offset)
+        {
+            return bytes[offset] |
+                   (bytes[offset + 1] << 8) |
+                   (bytes[offset + 2] << 16) |
+                   (bytes[offset + 3] << 24);
         }
 
         private static byte[] Clone(byte[] bytes)

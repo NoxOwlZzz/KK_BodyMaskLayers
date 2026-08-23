@@ -21,7 +21,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     {
         public const string PluginGuid = "com.nightowlzzz.koikatsu.bodymasklayers";
         public const string PluginName = "BodyMask Layers";
-        public const string PluginVersion = "0.1.2";
+        public const string PluginVersion = "0.2.0";
 
         internal static ManualLogSource Log;
         internal static PluginConfig Settings;
@@ -35,6 +35,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             Settings = PluginConfig.Bind(Config);
             Config.SettingChanged += OnConfigSettingChanged;
             Diagnostics.LogEnvironment(Log);
+            NakayChaAlphaMaskProvider.Initialize();
 
             CharacterApi.RegisterExtraBehaviour<BodyMaskCharacterController>(PluginGuid);
             _makerInterface = new MakerInterface(this);
@@ -74,6 +75,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 _harmony.UnpatchSelf();
                 _harmony = null;
             }
+
+            NakayChaAlphaMaskProvider.Shutdown();
         }
 
         public static void LogDebug(string message)
@@ -92,24 +95,31 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             ConfigEntryBase changed = eventArgs.ChangedSetting;
-            bool requiresDecode = changed == Settings.MinimumResolution ||
-                                  changed == Settings.MaximumMaskResolution ||
-                                  changed == Settings.MaximumPngBytes ||
-                                  changed == Settings.ColorClassification ||
+            bool requiresDecode = changed == Settings.ColorClassification ||
                                   changed == Settings.ColorTolerance ||
-                                  changed == Settings.UnknownColorPolicy;
+                                  changed == Settings.UnknownColorPolicy ||
+                                  changed == Settings.GradientHandling;
             bool affectsRuntime = requiresDecode ||
                                   changed == Settings.Enabled ||
                                   changed == Settings.DefaultOutputResolution ||
                                   changed == Settings.UnknownStatePolicy ||
-                                  changed == Settings.MaskBindingMode ||
-                                  changed == Settings.AllowUnauditedChaAlphaMask;
+                                  changed == Settings.AllowUnauditedChaAlphaMask ||
+                                  changed == Settings.EnableNakayLegacyCompatibility ||
+                                  changed == Settings.AutoConvertNakayLegacyMasks ||
+                                  changed == Settings.LegacyIndexAutoRefresh ||
+                                  changed == Settings.LegacyCacheMemoryLimitMegabytes ||
+                                  changed == Settings.LegacyDiagnostics;
             if (!affectsRuntime)
             {
                 return;
             }
 
-            BodyMaskCharacterController.NotifyConfigurationChanged(requiresDecode);
+            BodyMaskCharacterController.NotifyConfigurationChanged(
+                requiresDecode,
+                changed == Settings.EnableNakayLegacyCompatibility ||
+                changed == Settings.AutoConvertNakayLegacyMasks);
+            NakayChaAlphaMaskProvider.ApplyConfigurationChange(
+                changed == Settings.LegacyCacheMemoryLimitMegabytes);
         }
 
         private static void DumpDiagnostics()
@@ -123,6 +133,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 .Append("; enabled=").Append(Settings.Enabled.Value)
                 .AppendLine();
             dump.AppendLine(Diagnostics.BuildCompatibilitySnapshot());
+            dump.AppendLine(BodyMaskPerformanceMetrics.BuildSummary());
             for (int i = 0; i < controllers.Length; i++)
             {
                 dump.AppendLine(Diagnostics.BuildCharacterSnapshot(controllers[i]));

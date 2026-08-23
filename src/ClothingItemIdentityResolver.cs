@@ -8,6 +8,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private static readonly Type ResolverType = Type.GetType(
             "Sideloader.AutoResolver.UniversalAutoResolver, Sideloader", false);
         private static readonly MethodInfo TryGetResolutionInfo = FindResolutionMethod();
+        private static readonly MethodInfo TryGetLegacyResolutionInfo = FindLegacyResolutionMethod();
 
         public static ClothingItemIdentity Resolve(ChaControl character, ClothingSlot slot)
         {
@@ -70,6 +71,38 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
+        public static int ResolveLegacyLocalItemId(int originalItemId, int category, string modGuid)
+        {
+            if (TryGetLegacyResolutionInfo == null || originalItemId <= 0 ||
+                string.IsNullOrEmpty(modGuid))
+            {
+                return originalItemId;
+            }
+
+            try
+            {
+                object resolved = TryGetLegacyResolutionInfo.Invoke(null, new object[]
+                {
+                    originalItemId,
+                    (ChaListDefine.CategoryNo)category,
+                    modGuid
+                });
+                if (resolved == null)
+                {
+                    return originalItemId;
+                }
+
+                int localSlot = ReadProperty<int>(resolved.GetType(), resolved, "LocalSlot");
+                return localSlot > 0 ? localSlot : originalItemId;
+            }
+            catch (Exception exception)
+            {
+                BodyMaskLayersPlugin.LogDebug(
+                    "Sideloader legacy item lookup failed: " + exception.Message);
+                return originalItemId;
+            }
+        }
+
         private static MethodInfo FindResolutionMethod()
         {
             if (ResolverType == null)
@@ -90,6 +123,35 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 if (parameters.Length == 2 &&
                     parameters[0].ParameterType == typeof(ChaListDefine.CategoryNo) &&
                     parameters[1].ParameterType == typeof(int))
+                {
+                    return method;
+                }
+            }
+
+            return null;
+        }
+
+        private static MethodInfo FindLegacyResolutionMethod()
+        {
+            if (ResolverType == null)
+            {
+                return null;
+            }
+
+            MethodInfo[] methods = ResolverType.GetMethods(BindingFlags.Public | BindingFlags.Static);
+            for (int i = 0; i < methods.Length; i++)
+            {
+                MethodInfo method = methods[i];
+                if (method.Name != "TryGetResolutionInfo")
+                {
+                    continue;
+                }
+
+                ParameterInfo[] parameters = method.GetParameters();
+                if (parameters.Length == 3 &&
+                    parameters[0].ParameterType == typeof(int) &&
+                    parameters[1].ParameterType == typeof(ChaListDefine.CategoryNo) &&
+                    parameters[2].ParameterType == typeof(string))
                 {
                     return method;
                 }

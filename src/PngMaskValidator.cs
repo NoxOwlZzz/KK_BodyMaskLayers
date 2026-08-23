@@ -21,11 +21,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     {
         private static readonly byte[] Signature = { 137, 80, 78, 71, 13, 10, 26, 10 };
 
-        public static MaskValidationResult Validate(
-            byte[] bytes,
-            int minimumResolution,
-            int maximumResolution,
-            int maximumBytes)
+        public static MaskValidationResult Validate(byte[] bytes)
         {
             MaskValidationResult result = new MaskValidationResult();
             if (bytes == null || bytes.Length < 33)
@@ -34,9 +30,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return result;
             }
 
-            if (bytes.Length > maximumBytes)
+            if (bytes.Length > PortableMaskFormatLimits.MaximumPngBytes)
             {
-                result.Message = "The PNG exceeds the configured byte limit.";
+                result.Message = "The PNG exceeds the supported card-data size.";
                 return result;
             }
 
@@ -70,19 +66,23 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             result.BitDepth = bytes[24];
             result.ColorType = bytes[25];
 
-            if (result.Width != result.Height)
+            int pixelCount;
+            if (!MaskDimensions.TryGetPixelCount(result.Width, result.Height, out pixelCount))
             {
-                result.Message = "Body masks must be square.";
+                result.Message = "The PNG dimensions cannot be represented safely.";
                 return result;
             }
 
-            if (result.Width < minimumResolution || result.Width > maximumResolution)
+            if (result.Width > PortableMaskFormatLimits.MaximumDimension ||
+                result.Height > PortableMaskFormatLimits.MaximumDimension)
             {
-                result.Message = string.Format(
-                    "Resolution {0} is outside the allowed range {1}-{2}.",
-                    result.Width,
-                    minimumResolution,
-                    maximumResolution);
+                result.Message = "The PNG dimensions exceed the supported card-data resolution.";
+                return result;
+            }
+
+            if (result.Width != result.Height)
+            {
+                result.Message = "Body masks must be square.";
                 return result;
             }
 

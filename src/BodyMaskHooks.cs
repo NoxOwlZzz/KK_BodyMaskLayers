@@ -67,6 +67,16 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             BodyMaskCharacterController.NotifyClothingStateChanged(__instance, __0);
         }
 
+        [HarmonyPatch(typeof(ChaControl), "ChangeCustomClothes", new Type[]
+        {
+            typeof(bool), typeof(int), typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(bool)
+        })]
+        [HarmonyPostfix]
+        private static void ChangeCustomClothesPostfix(ChaControl __instance, int __1)
+        {
+            BodyMaskCharacterController.NotifyClothingItemChanged(__instance, __1);
+        }
+
         [HarmonyPatch(typeof(ChaControl), "LoadAlphaMaskTexture", new Type[]
         {
             typeof(string), typeof(string), typeof(byte)

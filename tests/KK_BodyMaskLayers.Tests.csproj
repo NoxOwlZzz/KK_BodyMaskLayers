@@ -52,12 +52,66 @@
       <HintPath>..\lib\System.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Xml">
+      <HintPath>..\lib\System.Xml.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="TestAssert.cs" />
     <Compile Include="PureLogicTests.cs" />
+    <Compile Include="PerformanceInfrastructureTests.cs" />
+    <Compile Include="GradientCoverageTests.cs" />
+    <Compile Include="LegacyCatalogTests.cs" />
+    <Compile Include="ArchitectureComponentTests.cs" />
+    <Compile Include="CharacterLegacyMaskSessionTests.cs" />
+    <Compile Include="NativeMaskLayerStoreTests.cs" />
+    <Compile Include="NativeMaskDecodePipelineTests.cs" />
+
+    <Compile Include="..\src\PerformanceCounters.cs">
+      <Link>LinkedSource\PerformanceCounters.cs</Link>
+    </Compile>
+    <Compile Include="..\src\BodyMaskPerformanceMetrics.cs">
+      <Link>LinkedSource\BodyMaskPerformanceMetrics.cs</Link>
+    </Compile>
+    <Compile Include="..\src\BoundedLruCache.cs">
+      <Link>LinkedSource\BoundedLruCache.cs</Link>
+    </Compile>
+    <Compile Include="..\src\CompositionScheduler.cs">
+      <Link>LinkedSource\CompositionScheduler.cs</Link>
+    </Compile>
+    <Compile Include="..\src\LegacyMaskDescriptor.cs">
+      <Link>LinkedSource\LegacyMaskDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\src\LegacyManifestParser.cs">
+      <Link>LinkedSource\LegacyManifestParser.cs</Link>
+    </Compile>
+    <Compile Include="..\src\LegacyClothingMaskCatalog.cs">
+      <Link>LinkedSource\LegacyClothingMaskCatalog.cs</Link>
+    </Compile>
+    <Compile Include="..\src\CharacterLegacyMaskSession.cs">
+      <Link>LinkedSource\CharacterLegacyMaskSession.cs</Link>
+    </Compile>
+    <Compile Include="..\src\LayerEligibilityEvaluator.cs">
+      <Link>LinkedSource\LayerEligibilityEvaluator.cs</Link>
+    </Compile>
+    <Compile Include="..\src\NativeMaskLayerStore.cs">
+      <Link>LinkedSource\NativeMaskLayerStore.cs</Link>
+    </Compile>
+    <Compile Include="..\src\NativeMaskDecodePipeline.cs">
+      <Link>LinkedSource\NativeMaskDecodePipeline.cs</Link>
+    </Compile>
+    <Compile Include="..\src\OutfitPayloadRouter.cs">
+      <Link>LinkedSource\OutfitPayloadRouter.cs</Link>
+    </Compile>
+    <Compile Include="..\src\PersistableLayerSelector.cs">
+      <Link>LinkedSource\PersistableLayerSelector.cs</Link>
+    </Compile>
+    <Compile Include="..\src\SideloaderLegacyManifestSourceReader.cs">
+      <Link>LinkedSource\SideloaderLegacyManifestSourceReader.cs</Link>
+    </Compile>
 
     <Compile Include="..\src\Enums.cs">
       <Link>LinkedSource\Enums.cs</Link>
@@ -88,6 +142,12 @@
     </Compile>
     <Compile Include="..\src\PngMaskValidator.cs">
       <Link>LinkedSource\PngMaskValidator.cs</Link>
+    </Compile>
+    <Compile Include="..\src\MaskDimensions.cs">
+      <Link>LinkedSource\MaskDimensions.cs</Link>
+    </Compile>
+    <Compile Include="..\src\PortableMaskFormatLimits.cs">
+      <Link>LinkedSource\PortableMaskFormatLimits.cs</Link>
     </Compile>
     <Compile Include="..\src\ClothingItemIdentity.cs">
       <Link>LinkedSource\ClothingItemIdentity.cs</Link>

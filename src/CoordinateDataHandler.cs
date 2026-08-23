@@ -21,6 +21,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             };
         }
 
+        public static PluginData CreatePluginDataOrNull(
+            IEnumerable<ClothingMaskLayerData> layers)
+        {
+            List<ClothingMaskLayerData> persistable =
+                PersistableLayerSelector.Materialize(layers);
+            return persistable.Count == 0 ? null : CreatePluginData(persistable);
+        }
+
         public static bool TryReadPluginData(
             PluginData data,
             out Dictionary<ClothingSlot, ClothingMaskLayerData> layers,
@@ -62,19 +70,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return;
             }
 
-            List<ClothingMaskLayerData> materialized = new List<ClothingMaskLayerData>();
-            foreach (ClothingMaskLayerData layer in layers)
-            {
-                if (layer != null && layer.OriginalPngBytes != null && layer.OriginalPngBytes.Length != 0)
-                {
-                    materialized.Add(layer);
-                }
-            }
-
             Extensions.SetExtendedDataById(
                 clothes,
                 BodyMaskLayersPlugin.PluginGuid,
-                materialized.Count == 0 ? null : CreatePluginData(materialized));
+                CreatePluginDataOrNull(layers));
         }
     }
 }

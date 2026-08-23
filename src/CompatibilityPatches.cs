@@ -54,7 +54,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 string version = pluginInfo.Metadata.Version == null
                     ? string.Empty
                     : pluginInfo.Metadata.Version.ToString();
-                if (!version.StartsWith("21.1.4", StringComparison.Ordinal))
+                if (!string.Equals(version, "21.1.4", StringComparison.Ordinal) &&
+                    !string.Equals(version, "21.1.4.0", StringComparison.Ordinal))
                 {
                     BodyMaskLayersPlugin.Log.LogWarning(
                         "Coordinate Load Option " + version +
@@ -238,7 +239,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             string version = pluginInfo.Metadata.Version == null
                 ? string.Empty
                 : pluginInfo.Metadata.Version.ToString();
-            if (version.StartsWith("1.0.0", StringComparison.Ordinal))
+            if (string.Equals(
+                    version,
+                    NakayChaAlphaMaskProvider.AuditedVersion,
+                    StringComparison.Ordinal) ||
+                string.Equals(version, "1.0.0.0", StringComparison.Ordinal))
             {
                 return true;
             }

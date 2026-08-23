@@ -46,7 +46,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             builder.Append("materialContract=").Append(controller.MaterialContractDescription)
                 .AppendLine();
             builder.AppendLine(
-                "compositionMethod=CPU dirty-only categorical OR; upstream RG is combined, B/A are copied unchanged");
+                "compositionMethod=CPU dirty-only max hide coverage; binary bitsets and continuous byte planes share one compositor; upstream B/A are copied unchanged");
             for (int i = 0; i < ClothingSlotRegistry.SlotCount; i++)
             {
                 builder.Append("  [").Append(i).Append("] ")
@@ -54,6 +54,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     .Append(": ")
                     .Append(controller.DescribeLayer((ClothingSlot)i))
                     .AppendLine();
+                if (controller.HasLegacySource((ClothingSlot)i))
+                {
+                    builder.Append("      legacy: ")
+                        .Append(controller.DescribeLegacyDetails((ClothingSlot)i))
+                        .AppendLine();
+                }
             }
 
             return builder.ToString();
@@ -71,7 +77,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             AppendPlugin(builder, "com.bepis.bepinex.sideloader", "Sideloader");
             builder.Append("ownershipAllowed=").Append(CompatibilityPatches.CompositionOwnershipAllowed)
                 .Append(", unauditedOverride=")
-                .Append(BodyMaskLayersPlugin.Settings.AllowUnauditedChaAlphaMask.Value);
+                .Append(BodyMaskLayersPlugin.Settings.AllowUnauditedChaAlphaMask.Value)
+                .AppendLine()
+                .Append(NakayChaAlphaMaskProvider.BuildIndexSummary());
             return builder.ToString();
         }
 

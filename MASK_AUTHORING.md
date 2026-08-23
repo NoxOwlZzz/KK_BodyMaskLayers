@@ -1,6 +1,6 @@
 # Mask authoring guide
 
-This guide describes the categorical PNG format. It is intentionally strict: a mask is data, not a shaded image.
+This guide describes the native categorical and continuous PNG formats. A mask is state data, not a diffuse texture.
 
 ## Canvas requirements
 
@@ -9,11 +9,13 @@ This guide describes the categorical PNG format. It is intentionally strict: a m
 - Power-of-two dimensions.
 - 8 bits per channel.
 - PNG color type 2, 3, 4 or 6.
-- Default accepted range: 128×128 through 2048×2048.
-- Default embedded-file limit: 16 MiB per slot.
+- Fixed internal dimension range: 1×1 through 4096×4096.
+- Fixed internal embedded-PNG cap: 32 MiB per slot.
 - Every slot uses the target character's **base-body UV layout**, never the garment mesh UV. This is also true for Bottom, Bra, Shorts, Gloves, Pantyhose, Socks and both shoe slots: the PNG describes which pixels of the body disappear, not pixels of the clothes.
 
-The plugin preserves the exact source PNG bytes, but internally classifies pixels. Resizing during composition uses nearest-neighbor. Do not rely on smooth grayscale transitions.
+The dimension and byte caps are format-safety guards, not user-configurable import settings.
+
+The plugin preserves the exact source PNG bytes. Categorical masks compile to bitsets and resize with nearest-neighbor. Continuous masks compile to one 8-bit hide-coverage plane per required state and resize those planes with bilinear interpolation after decoding.
 
 ## Palette and state behavior
 
@@ -24,7 +26,13 @@ The plugin preserves the exact source PNG bytes, but internally classifies pixel
 | Black | `0,0,0` / `#000000` | hidden | hidden | visible | Hide until the item is off |
 | Red | `255,0,0` / `#FF0000` | hidden | hidden | visible | Same visibility as black; counted separately |
 
-The clothing state belongs to the selected slot. A Bottom mask follows Bottom state even if Top is Off. Multiple active layers combine by OR: a body pixel remains hidden when any eligible layer asks to hide it.
+The clothing state belongs to the selected slot. A Bottom mask follows Bottom state even if Top is Off. Multiple active sources combine by maximum hide coverage, which is equivalent to Boolean OR at exact 0/255 endpoints.
+
+## Continuous R/G authoring
+
+In `Gradient Handling = Auto`, exact canonical colors keep the table above. Other native pixels are accepted as continuous only when B is zero and `R <= G`: Full hide coverage is `255 - R`, Partial states 1 and 2 use `255 - G`, and Off contributes nothing. Source alpha remains diagnostic metadata.
+
+This supports antialiased edges and intentional black-to-green, green-to-yellow, or black-to-yellow ramps without categorical snapping. A native pixel with B data or non-monotonic `R > G` is ambiguous in `Auto` and follows `UnknownColorPolicy`. `PreserveContinuous` accepts explicit non-monotonic R/G state coverage for non-canonical values; the four canonical colors and `#4CFF00` always retain their categorical meaning. `StrictCategorical` restores the 0.1.x palette-only decoder and bounded compatibility normalization.
 
 ## Why blue is unsupported
 
@@ -34,11 +42,11 @@ Do not use blue as a fifth category. Pure blue has R=G=0, but the B channel can 
 
 Source alpha does not control body hiding. Masks without alpha exist in the installed ecosystem. Use fully opaque palette colors for clarity. Unexpected alpha values may be reported, but they are not a fifth semantic category.
 
-## Recommended workflow
+## Recommended categorical workflow
 
 1. Start from the correct Koikatsu base-body UV/template for the target body/uncensor. Never paint against the clothing mesh UV.
 2. Work at 512×512 or the same power-of-two resolution as the upstream mask.
-3. Disable antialiasing, feathering, color management transforms and lossy export.
+3. Disable antialiasing and feathering when authoring a categorical/bitset mask.
 4. Fill every pixel with one of the four canonical colors.
 5. Use yellow as the neutral background.
 6. Paint green where the body should be hidden only in Full.
@@ -49,13 +57,13 @@ Source alpha does not control body hiding. Masks without alpha exist in the inst
 
 ## Edges and antialiasing
 
-For deterministic results, use hard palette edges. The default `Threshold` classifier accepts small encoder deviations with `ColorTolerance=12`, and recognizes the common exported green `#4CFF00` as green. If a rejected Threshold mask contains no blue and at most 12.5% nearby unknown pixels, version 0.1.1 retries those exported/antialiased palette pixels with bounded nearest-category normalization. Larger or distant deviations remain rejected because they are more likely to be the wrong kind of image.
+Hard palette edges remain the smallest and fastest representation. Default `Auto` preserves safe intermediate R/G values as 8-bit coverage. The exported-green alias `#4CFF00` remains categorical in every mode; the older `Threshold` tolerance and bounded nearby-palette normalization apply only in `StrictCategorical`.
 
 If an existing asset has antialiasing:
 
-- quantize it to the four-color palette before import; or
-- increase tolerance cautiously and inspect diagnostics;
-- do not use `NearestCategory` merely to silence unknown-color warnings without visual review.
+- use `Auto` and keep the transition in compatible R/G space with B=0; or
+- quantize to the four-color palette and use `StrictCategorical` when hard edges are intended;
+- inspect continuous, edge, ambiguous, packed/B-data and unexpected-alpha diagnostics.
 
 ## Choosing black versus red
 
@@ -63,33 +71,31 @@ In the verified Body Alpha shader formula, black and red produce the same Full/P
 
 ## Slot and item binding
 
-Import into the slot that owns the garment. With default `MaskBindingMode=SlotAndItem`, the plugin binds the mask to the currently equipped item. Replacing that item leaves the PNG stored but inactive. Use **Bind to current item** only after confirming the new garment uses a compatible body UV/cutout.
-
-`SlotOnly` intentionally follows any present item in the slot and can cause holes or clipping with incompatible garments. It is an advanced troubleshooting/authoring mode, not the safe default.
+Import into the slot that owns the garment. Binding is always based on both the slot and the currently equipped item. Replacing that item leaves the PNG stored but inactive. Use **Bind mask to current item** only after confirming the replacement garment uses a compatible body UV/cutout.
 
 ## Maker load, save and export workflow
 
 1. Equip the intended item, open its stock clothing tab, and scroll to **Body alpha mask**.
-2. Select **Load new mask texture**. A valid image is embedded immediately in the current outfit record and bound to the equipped item by default.
+2. Select **Load new mask texture**. A valid image is embedded immediately in the current outfit record and bound to the equipped item.
 3. Confirm the preview and concise **Status**. Use **Bind mask to current item** after an intentional replacement.
-4. Cycle the garment through Full, every available Partial/Half level, and Off. Black/red must hide in Full and Partial; green only in Full; yellow never contributes.
+4. Cycle the garment through Full, every available Partial/Half level, and Off. For continuous assets, inspect edge intensity as well as categorical regions.
 5. Save the character card and/or coordinate normally in Maker. Extended Save writes every slot's original PNG bytes and metadata into that outfit; the external source path is no longer needed. Reload a duplicate card and coordinate to verify the round-trip before distribution.
 6. **Export mask texture** writes the exact embedded bytes. **Clear mask texture** removes only that slot record; **Enable loaded mask** temporarily disables/enables it without discarding the PNG.
 
-If the mask hides too much body, return to the source image and replace excess black/red areas with green (when hiding is needed only in Full) or yellow (when that body area should never be hidden by this garment). Keep hard edges, make small changes around seams, then reload and retest all states and overlapping layers. Do not solve over-hiding by adding transparency, gradients, or garment-UV painting.
+If the mask hides too much body, move coverage toward green (Full-only), yellow (neutral), or lower continuous hide intensity. Source alpha is not the remedy. Reload and retest all states and overlapping layers.
 
 ## Resolution strategy
 
-Larger images increase card/coordinate size and dirty-rebuild cost. Start at 512 unless fine UV boundaries require more. Test 1024/2048 only where the visual difference is real. Do not upscale a categorical mask with bilinear/bicubic filters; use nearest-neighbor. Test the result on several body shapes/sizes and with the intended body/uncensor, because deformation and UV variants can expose seams even though the mask itself always addresses the base body.
+Larger images increase card/coordinate size and dirty-rebuild cost. Start at 512 unless fine UV boundaries require more. Keep categorical resizing nearest-neighbor; resize decoded continuous coverage with monotonic interpolation. Test several body shapes and the intended body/uncensor.
 
 ## Preflight checklist
 
 - [ ] Square, power-of-two, 8-bit PNG.
-- [ ] Resolution inside configured limits.
-- [ ] File size inside configured limit.
-- [ ] Only yellow, green, black and optionally red.
-- [ ] No blue pixels.
-- [ ] No unintended transparent/antialiased edge colors.
+- [ ] Resolution inside the fixed internal 1×1–4096×4096 range.
+- [ ] Embedded PNG no larger than the fixed internal 32 MiB cap.
+- [ ] Categorical: only yellow, green, black and optionally red; or continuous: intentional R/G with B=0.
+- [ ] No unknown packed/blue data.
+- [ ] Edge and alpha diagnostics match the intended authoring mode.
 - [ ] Base-body UV used (never the garment UV), with mipmaps disabled.
 - [ ] Several representative body shapes/sizes inspected.
 - [ ] Correct garment and slot selected before binding.

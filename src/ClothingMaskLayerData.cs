@@ -17,6 +17,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public UnknownStatePolicy? OptionalStatePolicy;
         public string CreatedWithPluginVersion;
         public string LastValidationResult;
+        public MaskSourceContract SourceContract = MaskSourceContract.Native;
+        public GradientHandlingMode GradientHandlingMode = GradientHandlingMode.StrictCategorical;
+        public string SourceProviderId;
+        public string SourceFingerprint;
+        public string SourceAsset;
 
         public ClothingMaskLayerData DeepClone()
         {

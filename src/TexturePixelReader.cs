@@ -47,6 +47,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 Graphics.Blit(texture, temporary);
                 RenderTexture.active = temporary;
                 readable = new Texture2D(width, height, TextureFormat.ARGB32, false);
+                BodyMaskPerformanceMetrics.RecordNewTextureAllocation();
                 readable.ReadPixels(new Rect(0f, 0f, width, height), 0, 0, false);
                 readable.Apply(false, false);
                 pixels = Convert(readable.GetPixels32());

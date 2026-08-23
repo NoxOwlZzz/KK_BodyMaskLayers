@@ -51,9 +51,23 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         NearestCategory = 2
     }
 
-    public enum MaskBindingMode
+    public enum GradientHandlingMode
     {
-        SlotAndItem = 0,
-        SlotOnly = 1
+        Auto = 0,
+        PreserveContinuous = 1,
+        StrictCategorical = 2
     }
+
+    public enum MaskSourceContract
+    {
+        Native = 0,
+        NakayRgbStateCoverage = 1
+    }
+
+    public enum CompiledMaskKind
+    {
+        Binary = 0,
+        Continuous = 1
+    }
+
 }

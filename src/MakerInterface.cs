@@ -72,7 +72,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 _slotControls[index] = controls;
 
                 e.AddControl(new MakerSeparator(category, _owner));
-                e.AddControl(new MakerText("Body alpha mask", category, _owner));
+                e.AddControl(new MakerText("Native body alpha mask", category, _owner));
 
                 controls.Preview = e.AddControl(new MakerImage(null, category, _owner)
                 {
@@ -82,7 +82,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
                 controls.Enabled = e.AddControl(new MakerToggle(
                     category,
-                    "Enable loaded mask",
+                    "Enable native mask",
                     false,
                     _owner));
                 UniRx.ObservableExtensions.Subscribe<bool>(
@@ -105,6 +105,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     "Status: waiting for character...",
                     category,
                     _owner));
+
                 e.AddControl(new MakerSeparator(category, _owner));
             }
 
@@ -162,7 +163,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private void LoadPng(ClothingSlot slot)
         {
             int generation = _sessionGeneration;
-            int maximumBytes = BodyMaskLayersPlugin.Settings.GetMaximumPngBytes();
             BodyMaskLayersPlugin.LogDebug(
                 "Opening PNG picker for " + ClothingSlotRegistry.GetDisplayName(slot) + ".");
             OpenFileDialog.Show(delegate(string[] paths)
@@ -182,12 +182,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                         return;
                     }
 
-                    if (source.Length > maximumBytes)
+                    if (source.Length > PortableMaskFormatLimits.MaximumPngBytes)
                     {
                         BodyMaskLayersPlugin.Log.LogWarning(
-                            "Rejected mask before reading: file exceeds Maximum PNG bytes (" +
-                            maximumBytes + ").");
-                        QueueMessage(generation, slot, "PNG is larger than the configured limit.");
+                            "Rejected mask before reading: file exceeds the supported " +
+                            PortableMaskFormatLimits.MaximumPngBytes + "-byte card-data size.");
+                        QueueMessage(generation, slot, "PNG is too large to store in card data.");
                         return;
                     }
 
@@ -245,9 +245,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private void Clear(ClothingSlot slot)
         {
             BodyMaskCharacterController controller = GetController();
+            bool hasAutomaticSource = controller != null && controller.HasLegacySource(slot);
             if (controller != null && controller.ClearLayer(slot))
             {
-                SetMessage(slot, "Mask cleared.");
+                SetMessage(
+                    slot,
+                    hasAutomaticSource
+                        ? "Mask cleared for this session; automatic sources return after reload."
+                        : "Mask cleared.");
             }
             else
             {
@@ -338,6 +343,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             {
                 RefreshSlot((ClothingSlot)index, refreshPreviews, controller);
             }
+
         }
 
         private void RefreshSlot(ClothingSlot slot, bool refreshPreview)
@@ -405,6 +411,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             {
                 RefreshPreview(controls, controller);
             }
+
         }
 
         private void RefreshPreview(
@@ -474,6 +481,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 targetHeight,
                 TextureFormat.ARGB32,
                 false);
+            BodyMaskPerformanceMetrics.RecordNewTextureAllocation();
             preview.name = "BodyMaskLayers_MakerPreview";
             preview.filterMode = FilterMode.Point;
             preview.wrapMode = TextureWrapMode.Clamp;

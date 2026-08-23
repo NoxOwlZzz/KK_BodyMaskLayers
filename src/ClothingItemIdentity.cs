@@ -21,16 +21,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return (ClothingItemIdentity)MemberwiseClone();
         }
 
-        public bool Matches(ClothingItemIdentity current, MaskBindingMode bindingMode)
+        public bool Matches(ClothingItemIdentity current)
         {
             if (current == null || Slot != current.Slot)
             {
                 return false;
-            }
-
-            if (bindingMode == MaskBindingMode.SlotOnly)
-            {
-                return current.HasItem;
             }
 
             if (!HasItem || !current.HasItem || Category != current.Category)

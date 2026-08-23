@@ -7,10 +7,15 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
     public static class CardDataSerializer
     {
-        public const int SchemaVersion = 1;
+        public const int LegacySchemaVersion = 1;
+        public const int SchemaVersion = 2;
         public const int MaximumLayerCount = 9;
-        public const int AbsoluteMaximumPngBytes = 32 * 1024 * 1024;
-        private const int MaximumStringBytes = 4096;
+        public const int MaximumStringBytes = 4096;
+        public const int MaximumProviderIdBytes = 256;
+        public const int MaximumFingerprintBytes = 512;
+        public const int MaximumSerializedLayerBytes =
+            PortableMaskFormatLimits.MaximumPngBytes + (64 * 1024);
+
         private static readonly byte[] Magic = { (byte)'B', (byte)'M', (byte)'L', (byte)'1' };
         private static readonly Encoding Utf8 = new UTF8Encoding(false, true);
 
@@ -43,7 +48,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 writer.Write(materialized.Count);
                 for (int i = 0; i < materialized.Count; i++)
                 {
-                    WriteLayer(writer, materialized[i]);
+                    WriteLayerRecord(writer, materialized[i]);
                 }
 
                 writer.Flush();
@@ -79,7 +84,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     }
 
                     int schemaVersion = reader.ReadInt32();
-                    if (schemaVersion != SchemaVersion)
+                    if (schemaVersion != LegacySchemaVersion && schemaVersion != SchemaVersion)
                     {
                         error = "Unsupported BodyMask Layers schema version " + schemaVersion + ".";
                         return false;
@@ -94,7 +99,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
                     for (int i = 0; i < count; i++)
                     {
-                        ClothingMaskLayerData layer = ReadLayer(reader);
+                        ClothingMaskLayerData layer = schemaVersion == LegacySchemaVersion
+                            ? ReadLegacyLayer(reader)
+                            : ReadLayerRecord(reader);
                         int slot = (int)layer.Slot;
                         if (slot < 0 || slot >= MaximumLayerCount)
                         {
@@ -120,18 +127,28 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
-        private static void WriteLayer(BinaryWriter writer, ClothingMaskLayerData layer)
+        private static void WriteLayerRecord(BinaryWriter writer, ClothingMaskLayerData layer)
         {
-            if (layer.OriginalPngBytes == null || layer.OriginalPngBytes.Length == 0)
+            ValidateLayerForWrite(layer);
+
+            long lengthPosition = writer.BaseStream.Position;
+            writer.Write(0);
+            long recordStart = writer.BaseStream.Position;
+            WriteCurrentLayer(writer, layer);
+            long recordEnd = writer.BaseStream.Position;
+            long recordLength = recordEnd - recordStart;
+            if (recordLength <= 0 || recordLength > MaximumSerializedLayerBytes)
             {
-                throw new IOException("A layer has no PNG bytes.");
+                throw new IOException("A serialized layer record exceeds the safe length limit.");
             }
 
-            if (layer.OriginalPngBytes.Length > AbsoluteMaximumPngBytes)
-            {
-                throw new IOException("A layer exceeds the absolute PNG byte limit.");
-            }
+            writer.BaseStream.Position = lengthPosition;
+            writer.Write((int)recordLength);
+            writer.BaseStream.Position = recordEnd;
+        }
 
+        private static void WriteCurrentLayer(BinaryWriter writer, ClothingMaskLayerData layer)
+        {
             writer.Write((int)layer.Slot);
             writer.Write(layer.Enabled);
             writer.Write(layer.Width);
@@ -143,9 +160,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 writer.Write((int)layer.OptionalStatePolicy.Value);
             }
 
-            WriteString(writer, layer.Hash);
-            WriteString(writer, layer.CreatedWithPluginVersion);
-            WriteString(writer, layer.LastValidationResult);
+            WriteString(writer, layer.Hash, MaximumStringBytes, "hash");
+            WriteString(
+                writer,
+                layer.CreatedWithPluginVersion,
+                MaximumStringBytes,
+                "created-with version");
+            WriteString(
+                writer,
+                layer.LastValidationResult,
+                MaximumStringBytes,
+                "validation result");
             writer.Write(layer.BoundItemIdentity != null);
             if (layer.BoundItemIdentity != null)
             {
@@ -154,15 +179,142 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 writer.Write(identity.Category);
                 writer.Write(identity.LocalItemId);
                 writer.Write(identity.OriginalItemId);
-                WriteString(writer, identity.SideloaderGuid);
-                WriteString(writer, identity.DisplayName);
+                WriteString(writer, identity.SideloaderGuid, MaximumStringBytes, "Sideloader GUID");
+                WriteString(writer, identity.DisplayName, MaximumStringBytes, "display name");
             }
+
+            writer.Write((int)layer.SourceContract);
+            writer.Write((int)layer.GradientHandlingMode);
+            WriteString(
+                writer,
+                layer.SourceProviderId,
+                MaximumProviderIdBytes,
+                "source provider ID");
+            WriteString(
+                writer,
+                layer.SourceFingerprint,
+                MaximumFingerprintBytes,
+                "source fingerprint");
+            WriteString(writer, layer.SourceAsset, MaximumStringBytes, "source asset");
 
             writer.Write(layer.OriginalPngBytes.Length);
             writer.Write(layer.OriginalPngBytes);
         }
 
-        private static ClothingMaskLayerData ReadLayer(BinaryReader reader)
+        private static ClothingMaskLayerData ReadLayerRecord(BinaryReader reader)
+        {
+            long payloadEnd = reader.BaseStream.Length;
+            int recordLength = ReadInt32(reader, payloadEnd, "layer record length");
+            if (recordLength <= 0 || recordLength > MaximumSerializedLayerBytes ||
+                recordLength > payloadEnd - reader.BaseStream.Position)
+            {
+                throw new IOException("Invalid serialized layer record length.");
+            }
+
+            long recordEnd = reader.BaseStream.Position + recordLength;
+            ClothingMaskLayerData layer = new ClothingMaskLayerData();
+            layer.Slot = (ClothingSlot)ReadInt32(reader, recordEnd, "slot");
+            layer.Enabled = ReadBoolean(reader, recordEnd, "enabled flag");
+            layer.Width = ReadInt32(reader, recordEnd, "width");
+            layer.Height = ReadInt32(reader, recordEnd, "height");
+            layer.ColorFormatVersion = ReadInt32(reader, recordEnd, "color format version");
+            bool hasStatePolicy = ReadBoolean(reader, recordEnd, "state-policy flag");
+            if (hasStatePolicy)
+            {
+                int statePolicy = ReadInt32(reader, recordEnd, "state policy");
+                if (!IsValidUnknownStatePolicy(statePolicy))
+                {
+                    throw new IOException("Invalid optional state policy " + statePolicy + ".");
+                }
+
+                layer.OptionalStatePolicy = (UnknownStatePolicy)statePolicy;
+            }
+
+            layer.Hash = ReadString(reader, recordEnd, MaximumStringBytes, "hash");
+            layer.CreatedWithPluginVersion = ReadString(
+                reader,
+                recordEnd,
+                MaximumStringBytes,
+                "created-with version");
+            layer.LastValidationResult = ReadString(
+                reader,
+                recordEnd,
+                MaximumStringBytes,
+                "validation result");
+            if (ReadBoolean(reader, recordEnd, "bound-identity flag"))
+            {
+                ClothingItemIdentity identity = new ClothingItemIdentity();
+                int identitySlot = ReadInt32(reader, recordEnd, "identity slot");
+                if (!IsValidSlot(identitySlot))
+                {
+                    throw new IOException("Unknown bound-identity clothing slot " + identitySlot + ".");
+                }
+
+                identity.Slot = (ClothingSlot)identitySlot;
+                identity.Category = ReadInt32(reader, recordEnd, "identity category");
+                identity.LocalItemId = ReadInt32(reader, recordEnd, "identity local item ID");
+                identity.OriginalItemId = ReadInt32(reader, recordEnd, "identity original item ID");
+                identity.SideloaderGuid = ReadString(
+                    reader,
+                    recordEnd,
+                    MaximumStringBytes,
+                    "Sideloader GUID");
+                identity.DisplayName = ReadString(
+                    reader,
+                    recordEnd,
+                    MaximumStringBytes,
+                    "display name");
+                layer.BoundItemIdentity = identity;
+            }
+
+            int sourceContract = ReadInt32(reader, recordEnd, "source contract");
+            if (!IsValidSourceContract(sourceContract))
+            {
+                throw new IOException("Invalid mask source contract " + sourceContract + ".");
+            }
+
+            layer.SourceContract = (MaskSourceContract)sourceContract;
+            int gradientHandlingMode = ReadInt32(reader, recordEnd, "gradient handling mode");
+            if (!IsValidGradientHandlingMode(gradientHandlingMode))
+            {
+                throw new IOException("Invalid gradient handling mode " + gradientHandlingMode + ".");
+            }
+
+            layer.GradientHandlingMode = (GradientHandlingMode)gradientHandlingMode;
+            layer.SourceProviderId = ReadString(
+                reader,
+                recordEnd,
+                MaximumProviderIdBytes,
+                "source provider ID");
+            layer.SourceFingerprint = ReadString(
+                reader,
+                recordEnd,
+                MaximumFingerprintBytes,
+                "source fingerprint");
+            layer.SourceAsset = ReadString(
+                reader,
+                recordEnd,
+                MaximumStringBytes,
+                "source asset");
+
+            int pngLength = ReadInt32(reader, recordEnd, "PNG byte length");
+            if (pngLength <= 0 || pngLength > PortableMaskFormatLimits.MaximumPngBytes ||
+                pngLength > recordEnd - reader.BaseStream.Position)
+            {
+                throw new IOException("Invalid PNG byte length in serialized layer.");
+            }
+
+            layer.OriginalPngBytes = ReadBytes(reader, recordEnd, pngLength, "PNG bytes");
+            if (reader.BaseStream.Position != recordEnd)
+            {
+                throw new IOException("Unexpected trailing bytes in serialized layer record.");
+            }
+
+            ValidateCurrentLayerAfterRead(layer);
+            return layer;
+        }
+
+        private static ClothingMaskLayerData ReadLegacyLayer(BinaryReader reader)
         {
             ClothingMaskLayerData layer = new ClothingMaskLayerData();
             layer.Slot = (ClothingSlot)reader.ReadInt32();
@@ -175,9 +327,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 layer.OptionalStatePolicy = (UnknownStatePolicy)reader.ReadInt32();
             }
 
-            layer.Hash = ReadString(reader);
-            layer.CreatedWithPluginVersion = ReadString(reader);
-            layer.LastValidationResult = ReadString(reader);
+            layer.Hash = ReadLegacyString(reader);
+            layer.CreatedWithPluginVersion = ReadLegacyString(reader);
+            layer.LastValidationResult = ReadLegacyString(reader);
             if (reader.ReadBoolean())
             {
                 ClothingItemIdentity identity = new ClothingItemIdentity();
@@ -185,13 +337,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 identity.Category = reader.ReadInt32();
                 identity.LocalItemId = reader.ReadInt32();
                 identity.OriginalItemId = reader.ReadInt32();
-                identity.SideloaderGuid = ReadString(reader);
-                identity.DisplayName = ReadString(reader);
+                identity.SideloaderGuid = ReadLegacyString(reader);
+                identity.DisplayName = ReadLegacyString(reader);
                 layer.BoundItemIdentity = identity;
             }
 
             int pngLength = reader.ReadInt32();
-            if (pngLength <= 0 || pngLength > AbsoluteMaximumPngBytes ||
+            if (pngLength <= 0 || pngLength > PortableMaskFormatLimits.MaximumPngBytes ||
                 pngLength > reader.BaseStream.Length - reader.BaseStream.Position)
             {
                 throw new IOException("Invalid PNG byte length in serialized layer.");
@@ -203,10 +355,133 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 throw new EndOfStreamException("Truncated PNG bytes in serialized layer.");
             }
 
+            layer.SourceContract = MaskSourceContract.Native;
+            layer.GradientHandlingMode = GradientHandlingMode.StrictCategorical;
+            layer.SourceProviderId = null;
+            layer.SourceFingerprint = null;
+            layer.SourceAsset = null;
+            ValidateLegacyLayerAfterRead(layer);
             return layer;
         }
 
-        private static void WriteString(BinaryWriter writer, string value)
+        private static void ValidateLayerForWrite(ClothingMaskLayerData layer)
+        {
+            if (!IsValidSlot((int)layer.Slot))
+            {
+                throw new IOException("Unknown clothing slot " + (int)layer.Slot + ".");
+            }
+
+            ValidateCurrentLayerAfterRead(layer);
+            if (layer.OptionalStatePolicy.HasValue &&
+                !IsValidUnknownStatePolicy((int)layer.OptionalStatePolicy.Value))
+            {
+                throw new IOException("Invalid optional state policy.");
+            }
+
+            if (layer.BoundItemIdentity != null &&
+                !IsValidSlot((int)layer.BoundItemIdentity.Slot))
+            {
+                throw new IOException("Unknown bound-identity clothing slot.");
+            }
+
+            if (!IsValidSourceContract((int)layer.SourceContract))
+            {
+                throw new IOException("Invalid mask source contract.");
+            }
+
+            if (!IsValidGradientHandlingMode((int)layer.GradientHandlingMode))
+            {
+                throw new IOException("Invalid gradient handling mode.");
+            }
+
+            if (layer.OriginalPngBytes == null || layer.OriginalPngBytes.Length == 0)
+            {
+                throw new IOException("A layer has no PNG bytes.");
+            }
+
+            if (layer.OriginalPngBytes.Length > PortableMaskFormatLimits.MaximumPngBytes)
+            {
+                throw new IOException("A layer exceeds the absolute PNG byte limit.");
+            }
+        }
+
+        private static void ValidateCurrentLayerAfterRead(ClothingMaskLayerData layer)
+        {
+            if (!IsValidSlot((int)layer.Slot))
+            {
+                throw new IOException("Unknown clothing slot " + (int)layer.Slot + ".");
+            }
+
+            if (layer.Width <= 0 ||
+                layer.Width > PortableMaskFormatLimits.MaximumDimension ||
+                layer.Height <= 0 ||
+                layer.Height > PortableMaskFormatLimits.MaximumDimension)
+            {
+                throw new IOException("Invalid serialized mask resolution.");
+            }
+
+            if (layer.ColorFormatVersion <= 0)
+            {
+                throw new IOException("Invalid mask color format version.");
+            }
+
+            if (layer.OptionalStatePolicy.HasValue &&
+                !IsValidUnknownStatePolicy((int)layer.OptionalStatePolicy.Value))
+            {
+                throw new IOException("Invalid optional state policy.");
+            }
+
+            if (layer.BoundItemIdentity != null &&
+                !IsValidSlot((int)layer.BoundItemIdentity.Slot))
+            {
+                throw new IOException("Unknown bound-identity clothing slot.");
+            }
+
+            if (!IsValidSourceContract((int)layer.SourceContract) ||
+                !IsValidGradientHandlingMode((int)layer.GradientHandlingMode))
+            {
+                throw new IOException("Invalid mask interpretation metadata.");
+            }
+        }
+
+        private static void ValidateLegacyLayerAfterRead(ClothingMaskLayerData layer)
+        {
+            if (!IsValidSlot((int)layer.Slot))
+            {
+                throw new IOException("Unknown clothing slot " + (int)layer.Slot + ".");
+            }
+
+            if (layer.Width <= 0 ||
+                layer.Width > PortableMaskFormatLimits.MaximumDimension ||
+                layer.Height <= 0 ||
+                layer.Height > PortableMaskFormatLimits.MaximumDimension)
+            {
+                throw new IOException("Invalid serialized mask resolution.");
+            }
+
+            if (layer.ColorFormatVersion <= 0)
+            {
+                throw new IOException("Invalid mask color format version.");
+            }
+
+            if (layer.OptionalStatePolicy.HasValue &&
+                !IsValidUnknownStatePolicy((int)layer.OptionalStatePolicy.Value))
+            {
+                throw new IOException("Invalid optional state policy.");
+            }
+
+            if (layer.BoundItemIdentity != null &&
+                !IsValidSlot((int)layer.BoundItemIdentity.Slot))
+            {
+                throw new IOException("Unknown bound-identity clothing slot.");
+            }
+        }
+
+        private static void WriteString(
+            BinaryWriter writer,
+            string value,
+            int maximumBytes,
+            string fieldName)
         {
             if (value == null)
             {
@@ -215,16 +490,39 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             byte[] bytes = Utf8.GetBytes(value);
-            if (bytes.Length > MaximumStringBytes)
+            if (bytes.Length > maximumBytes)
             {
-                throw new IOException("A serialized string exceeds the safe length limit.");
+                throw new IOException(
+                    "The serialized " + fieldName + " string exceeds the safe length limit.");
             }
 
             writer.Write(bytes.Length);
             writer.Write(bytes);
         }
 
-        private static string ReadString(BinaryReader reader)
+        private static string ReadString(
+            BinaryReader reader,
+            long recordEnd,
+            int maximumBytes,
+            string fieldName)
+        {
+            int length = ReadInt32(reader, recordEnd, fieldName + " string length");
+            if (length == -1)
+            {
+                return null;
+            }
+
+            if (length < 0 || length > maximumBytes ||
+                length > recordEnd - reader.BaseStream.Position)
+            {
+                throw new IOException("Invalid serialized " + fieldName + " string length.");
+            }
+
+            byte[] bytes = ReadBytes(reader, recordEnd, length, fieldName);
+            return Utf8.GetString(bytes);
+        }
+
+        private static string ReadLegacyString(BinaryReader reader)
         {
             int length = reader.ReadInt32();
             if (length == -1)
@@ -245,6 +543,69 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             return Utf8.GetString(bytes);
+        }
+
+        private static int ReadInt32(BinaryReader reader, long end, string fieldName)
+        {
+            EnsureAvailable(reader, end, 4, fieldName);
+            return reader.ReadInt32();
+        }
+
+        private static bool ReadBoolean(BinaryReader reader, long end, string fieldName)
+        {
+            EnsureAvailable(reader, end, 1, fieldName);
+            byte value = reader.ReadByte();
+            if (value > 1)
+            {
+                throw new IOException("Invalid serialized " + fieldName + ".");
+            }
+
+            return value != 0;
+        }
+
+        private static byte[] ReadBytes(BinaryReader reader, long end, int length, string fieldName)
+        {
+            EnsureAvailable(reader, end, length, fieldName);
+            byte[] bytes = reader.ReadBytes(length);
+            if (bytes.Length != length)
+            {
+                throw new EndOfStreamException("Truncated serialized " + fieldName + ".");
+            }
+
+            return bytes;
+        }
+
+        private static void EnsureAvailable(BinaryReader reader, long end, int length, string fieldName)
+        {
+            if (length < 0 || reader.BaseStream.Position > end ||
+                length > end - reader.BaseStream.Position)
+            {
+                throw new EndOfStreamException("Truncated serialized " + fieldName + ".");
+            }
+        }
+
+        private static bool IsValidSlot(int value)
+        {
+            return value >= 0 && value < MaximumLayerCount;
+        }
+
+        private static bool IsValidUnknownStatePolicy(int value)
+        {
+            return value >= (int)UnknownStatePolicy.NoContribution &&
+                   value <= (int)UnknownStatePolicy.PreserveLastKnown;
+        }
+
+        private static bool IsValidSourceContract(int value)
+        {
+            return value == (int)MaskSourceContract.Native ||
+                   value == (int)MaskSourceContract.NakayRgbStateCoverage;
+        }
+
+        private static bool IsValidGradientHandlingMode(int value)
+        {
+            return value == (int)GradientHandlingMode.Auto ||
+                   value == (int)GradientHandlingMode.PreserveContinuous ||
+                   value == (int)GradientHandlingMode.StrictCategorical;
         }
     }
 }
