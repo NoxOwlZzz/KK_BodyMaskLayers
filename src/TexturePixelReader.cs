@@ -34,7 +34,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 }
                 catch (UnityException)
                 {
-                    // Non-readable texture; use an explicit GPU readback only on a dirty rebuild.
+                    // Fall back to GPU readback when the texture is not CPU-readable.
                 }
             }
 

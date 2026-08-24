@@ -9,13 +9,13 @@ set "LIB=%PROJECT_DIR%lib"
 
 if "%GAME_ROOT%"=="" (
   echo ERROR: Pass the Koikatsu game directory or set KOIKATSU_DIR.
-  echo Usage: copy-references.bat "C:\path\to\Koikatsu"
+  echo Usage: copy-references.bat "KOIKATSU_GAME_DIRECTORY"
   exit /b 2
 )
 
 if not exist "%GAME_ROOT%\Koikatu.exe" (
   echo ERROR: Koikatsu was not found at "%GAME_ROOT%".
-  echo Usage: copy-references.bat "C:\path\to\Koikatsu"
+  echo Usage: copy-references.bat "KOIKATSU_GAME_DIRECTORY"
   exit /b 2
 )
 
@@ -34,5 +34,5 @@ copy /Y "%BEPINEX%\core\0Harmony.dll" "%LIB%\0Harmony.dll" >nul || exit /b 4
 copy /Y "%BEPINEX%\plugins\KKAPI.dll" "%LIB%\KKAPI.dll" >nul || exit /b 4
 copy /Y "%BEPINEX%\plugins\KK_BepisPlugins\ExtensibleSaveFormat.dll" "%LIB%\ExtensibleSaveFormat.dll" >nul || exit /b 4
 
-echo Local compile references refreshed in "%LIB%". These files are not copied to plugin output.
+echo Compile references refreshed. Referenced DLLs are excluded from plugin output.
 exit /b 0

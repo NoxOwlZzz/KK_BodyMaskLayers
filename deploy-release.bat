@@ -10,13 +10,13 @@ set "BACKUP_DIR=%PLUGIN_DIR%\backup"
 
 if "%GAME_ROOT%"=="" (
   echo ERROR: Pass the Koikatsu game directory or set KOIKATSU_DIR.
-  echo Usage: deploy-release.bat "C:\path\to\Koikatsu"
+  echo Usage: deploy-release.bat "KOIKATSU_GAME_DIRECTORY"
   exit /b 2
 )
 
 if not exist "%GAME_ROOT%\Koikatu.exe" (
   echo ERROR: Koikatsu was not found at "%GAME_ROOT%".
-  echo Usage: deploy-release.bat "C:\path\to\Koikatsu"
+  echo Usage: deploy-release.bat "KOIKATSU_GAME_DIRECTORY"
   exit /b 2
 )
 
@@ -32,7 +32,7 @@ if errorlevel 1 (
 if exist "%TARGET%" (
   for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%I"
   if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
-  rem Keep the backup outside BepInEx's *.dll scan by using a non-DLL extension.
+  rem Use .bak so BepInEx does not scan the backup as a plugin.
   copy /Y "%TARGET%" "%BACKUP_DIR%\KK_BodyMaskLayers_!STAMP!.dll.bak" >nul
   if errorlevel 1 (
     echo ERROR: Could not back up the existing DLL. Deployment stopped.
