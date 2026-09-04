@@ -64,14 +64,3 @@ Import into the slot that owns the garment. Binding always includes both the slo
 6. Reload a copy and confirm that the mask and binding round-trip.
 
 **Export mask texture** writes the exact embedded PNG. **Clear mask texture** removes that slot's record. **Enable loaded mask** changes contribution without discarding the stored image.
-
-## Preflight checklist
-
-- [ ] Square, power-of-two, 8-bit PNG within the 32 MiB cap.
-- [ ] Base-body UV used rather than garment UV.
-- [ ] Categorical palette or intentional continuous R/G coverage with B=0.
-- [ ] Edge, blue-data, and alpha diagnostics match the intended mode.
-- [ ] Correct garment and slot selected before binding.
-- [ ] Full, each available Partial state, and Off inspected in-game.
-- [ ] Overlap with other active clothing masks inspected.
-- [ ] Card and coordinate round-trip verified.
