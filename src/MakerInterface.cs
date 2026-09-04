@@ -245,13 +245,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private void Clear(ClothingSlot slot)
         {
             BodyMaskCharacterController controller = GetController();
-            bool hasAutomaticSource = controller != null && controller.HasLegacySource(slot);
+            bool hasAutomaticSource = controller != null && controller.HasExternalSource(slot);
             if (controller != null && controller.ClearLayer(slot))
             {
                 SetMessage(
                     slot,
                     hasAutomaticSource
-                        ? "Mask cleared for this session; automatic sources return after reload."
+                        ? "Mask cleared for this session; compatible data may import again after reload."
                         : "Mask cleared.");
             }
             else

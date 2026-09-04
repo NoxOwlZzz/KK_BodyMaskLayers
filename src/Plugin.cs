@@ -21,7 +21,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     {
         public const string PluginGuid = "com.nightowlzzz.koikatsu.bodymasklayers";
         public const string PluginName = "BodyMask Layers";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.3.0";
 
         internal static ManualLogSource Log;
         internal static PluginConfig Settings;
@@ -35,7 +35,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             Settings = PluginConfig.Bind(Config);
             Config.SettingChanged += OnConfigSettingChanged;
             Diagnostics.LogEnvironment(Log);
-            NakayChaAlphaMaskProvider.Initialize();
+            ExternalMaskProvider.Initialize();
 
             CharacterApi.RegisterExtraBehaviour<BodyMaskCharacterController>(PluginGuid);
             _makerInterface = new MakerInterface(this);
@@ -76,7 +76,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 _harmony = null;
             }
 
-            NakayChaAlphaMaskProvider.Shutdown();
+            ExternalMaskProvider.Shutdown();
         }
 
         public static void LogDebug(string message)
@@ -102,24 +102,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             bool affectsRuntime = requiresDecode ||
                                   changed == Settings.Enabled ||
                                   changed == Settings.DefaultOutputResolution ||
-                                  changed == Settings.UnknownStatePolicy ||
-                                  changed == Settings.AllowUnauditedChaAlphaMask ||
-                                  changed == Settings.EnableNakayLegacyCompatibility ||
-                                  changed == Settings.AutoConvertNakayLegacyMasks ||
-                                  changed == Settings.LegacyIndexAutoRefresh ||
-                                  changed == Settings.LegacyCacheMemoryLimitMegabytes ||
-                                  changed == Settings.LegacyDiagnostics;
+                                  changed == Settings.UnknownStatePolicy;
+            if (changed == Settings.DebugLogging)
+            {
+                BodyMaskPerformanceMetrics.SetEnabled(Settings.DebugLogging.Value);
+            }
             if (!affectsRuntime)
             {
                 return;
             }
 
-            BodyMaskCharacterController.NotifyConfigurationChanged(
-                requiresDecode,
-                changed == Settings.EnableNakayLegacyCompatibility ||
-                changed == Settings.AutoConvertNakayLegacyMasks);
-            NakayChaAlphaMaskProvider.ApplyConfigurationChange(
-                changed == Settings.LegacyCacheMemoryLimitMegabytes);
+            BodyMaskCharacterController.NotifyConfigurationChanged(requiresDecode);
         }
 
         private static void DumpDiagnostics()

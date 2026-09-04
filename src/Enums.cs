@@ -61,7 +61,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     public enum MaskSourceContract
     {
         Native = 0,
-        NakayRgbStateCoverage = 1
+        ExternalRgbStateCoverage = 1
     }
 
     public enum CompiledMaskKind

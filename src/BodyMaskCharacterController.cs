@@ -8,6 +8,9 @@ using UnityEngine;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
+    // Top writes the body-mask scalars during the game's LateUpdate pass.
+    // Compose afterwards so visibility changes reach the renderer in the same frame.
+    [DefaultExecutionOrder(10000)]
     public sealed class BodyMaskCharacterController : CharaCustomFunctionController,
         IRuntimeDirtySink,
         IMaterialTargetDirtySink,
@@ -15,17 +18,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     {
         private const float FallbackPollIntervalSeconds = 0.5f;
         private readonly NativeMaskLayerStore _nativeLayers = new NativeMaskLayerStore();
-        private readonly LegacyPortableLayerConverter _legacyConverter =
-            new LegacyPortableLayerConverter();
-        private readonly CharacterLegacyMaskSession _legacySession =
-            new CharacterLegacyMaskSession();
+        private readonly ExternalPortableLayerConverter _externalConverter =
+            new ExternalPortableLayerConverter();
+        private readonly CharacterExternalMaskSession _externalSession =
+            new CharacterExternalMaskSession();
         private readonly MaskCompositionResources _compositionResources =
             new MaskCompositionResources();
         private CharacterClothingRuntime _runtimeState;
         private CharacterBodyMaskMaterialTarget _materialTarget;
         private CharacterMaskCompositionEngine _compositionEngine;
         private CharacterNativeMaskService _nativeMaskService;
-        private CharacterLegacyMaskCoordinator _legacyCoordinator;
+        private CharacterExternalMaskCoordinator _externalCoordinator;
         private CharacterMaskDiagnostics _maskDiagnostics;
         private CharacterMaskPersistence _maskPersistence;
         private float _nextErrorLogTime;
@@ -147,12 +150,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             _nativeMaskService = new CharacterNativeMaskService(
                 _nativeLayers,
                 decodePipeline,
-                _legacyConverter,
+                _externalConverter,
                 _runtimeState,
-                _legacySession,
+                _externalSession,
                 this);
-            _legacyCoordinator = new CharacterLegacyMaskCoordinator(
-                _legacySession,
+            _externalCoordinator = new CharacterExternalMaskCoordinator(
+                _externalSession,
                 _nativeLayers,
                 _nativeMaskService,
                 _runtimeState,
@@ -163,14 +166,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 _compositionResources);
             _compositionEngine = new CharacterMaskCompositionEngine(
                 _nativeLayers,
-                _legacySession,
+                _externalSession,
                 _runtimeState,
                 _materialTarget,
                 _compositionResources);
             _maskDiagnostics = new CharacterMaskDiagnostics(
                 _nativeLayers,
                 _nativeMaskService,
-                _legacyCoordinator,
+                _externalCoordinator,
                 _runtimeState,
                 _compositionEngine);
 
@@ -195,7 +198,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             _materialTarget.Refresh(ChaControl, true);
             _maskPersistence.CaptureCurrentClothes(ChaControl);
             _runtimeState.Reset();
-            _legacySession.MarkAllDirty();
+            _externalSession.MarkAllDirty();
             _nextFallbackPollTime = 0f;
 
             if (maintainState || ShouldPreserveMakerClothes(currentGameMode))
@@ -233,31 +236,36 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             _maskPersistence.SaveCurrent();
         }
 
-        protected override void Update()
+        private void LateUpdate()
         {
             try
             {
                 ApplyPendingConfigurationChange();
                 float now = Time.unscaledTime;
-                if (now >= _nextFallbackPollTime)
+                bool fallbackPollDue = now >= _nextFallbackPollTime;
+                if (fallbackPollDue)
                 {
                     _nextFallbackPollTime = now + FallbackPollIntervalSeconds;
                     BodyMaskPerformanceMetrics.RecordFallbackPoll();
                     _materialTarget.Refresh(ChaControl, false);
                     DetectCoordinateReplacement();
-                    _runtimeState.Poll(ChaControl, _nativeLayers, _legacySession);
-                    _legacyCoordinator.Refresh(ChaControl);
+                    _runtimeState.Poll(ChaControl, _nativeLayers, _externalSession);
+                    _externalCoordinator.Refresh(ChaControl);
                     _materialTarget.DetectExternalReplacement();
                 }
 
-                _compositionEngine.TryCompose(
-                    ChaControl,
-                    Time.frameCount,
-                    GetInstanceID());
+                if (_lastUpdateError == null || fallbackPollDue)
+                {
+                    _compositionEngine.TryCompose(
+                        ChaControl,
+                        Time.frameCount,
+                        GetInstanceID());
+                    _lastUpdateError = null;
+                }
             }
             catch (Exception exception)
             {
-                string message = exception.Message;
+                string message = exception.Message ?? exception.GetType().FullName;
                 float now = Time.unscaledTime;
                 if (!string.Equals(message, _lastUpdateError, StringComparison.Ordinal) ||
                     now >= _nextErrorLogTime)
@@ -268,10 +276,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 }
 
                 _materialTarget.Restore();
-            }
-            finally
-            {
-                base.Update();
             }
         }
 
@@ -335,7 +339,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                         character,
                         clothingIndex,
                         controller._nativeLayers,
-                        controller._legacySession))
+                        controller._externalSession))
                 {
                     controller.RequestDirty("game clothing state change", false);
                 }
@@ -359,12 +363,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             controller._runtimeState.InvalidateItem((ClothingSlot)clothingIndex);
-            controller._legacySession.MarkSlotDirty((ClothingSlot)clothingIndex);
+            controller._externalSession.MarkSlotDirty((ClothingSlot)clothingIndex);
             controller._nextFallbackPollTime = 0f;
             controller.RequestDirty("game clothing item/option change", true);
         }
 
-        public static void NotifyLegacyIndexChanged()
+        public static void NotifyExternalIndexChanged()
         {
             BodyMaskControllerRegistry.ForEachController(delegate(BodyMaskCharacterController controller)
             {
@@ -373,15 +377,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     return;
                 }
 
-                controller._legacySession.MarkAllDirty();
+                controller._externalSession.MarkAllDirty();
                 controller._nextFallbackPollTime = 0f;
-                controller.RequestDirty("legacy mask index change", false);
+                controller.RequestDirty("external mask index change", false);
             });
         }
 
-        public static void NotifyConfigurationChanged(
-            bool requiresDecode,
-            bool legacyProviderChanged)
+        public static void NotifyConfigurationChanged(bool requiresDecode)
         {
             BodyMaskControllerRegistry.ForEachController(delegate(BodyMaskCharacterController controller)
             {
@@ -393,11 +395,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 if (requiresDecode)
                 {
                     controller._nativeMaskService.MarkDecodeConfigurationDirty();
-                }
-                if (legacyProviderChanged)
-                {
-                    controller._legacySession.MarkAllDirty();
-                    controller._nextFallbackPollTime = 0f;
                 }
                 controller.RequestDirty(
                     requiresDecode
@@ -507,14 +504,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 out height);
         }
 
-        public bool HasLegacySource(ClothingSlot slot)
+        public bool HasExternalSource(ClothingSlot slot)
         {
-            return _legacyCoordinator.HasSource(slot);
+            return _externalCoordinator.HasSource(slot);
         }
 
-        public string DescribeLegacyDetails(ClothingSlot slot)
+        public string DescribeExternalDetails(ClothingSlot slot)
         {
-            return _legacyCoordinator.DescribeDetails(slot);
+            return _externalCoordinator.DescribeDetails(slot);
         }
 
         public string DescribeLayerForMaker(ClothingSlot slot)
@@ -548,7 +545,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             _runtimeState.Reset();
-            _legacySession.MarkAllDirty();
+            _externalSession.MarkAllDirty();
             _maskPersistence.LoadCurrent(
                 delegate { return CoordinateDataHandler.ReadFromClothes(clothes); },
                 "coordinate switch");

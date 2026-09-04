@@ -11,13 +11,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 new TestCase("coverage: native exact palette endpoints", NativePaletteEndpoints),
                 new TestCase("coverage: native gradient modes and diagnostics", NativeGradientModes),
                 new TestCase("coverage: horizontal vertical diagonal gradients and antialiasing", GradientShapesAndAntialiasing),
-                new TestCase("coverage: legacy RGB raw states", LegacyRawStates),
+                new TestCase("coverage: external RGB raw states", ExternalRawStates),
                 new TestCase("coverage: binary bitset boundaries and storage", BinaryBitsetBoundaries),
                 new TestCase("coverage: 512 and 1024 binary versus continuous storage", LargeStorageFootprints),
                 new TestCase("coverage: nearest binary and bilinear continuous", ResamplingPaths),
                 new TestCase("coverage: 512 and 1024 resampling paths", LargeResolutionResampling),
                 new TestCase("coverage: max overlay composition", MaximumOverlayComposition),
-                new TestCase("coverage: native legacy and base overlap", NativeLegacyAndBaseOverlap),
+                new TestCase("coverage: native external and base overlap", NativeExternalAndBaseOverlap),
                 new TestCase("coverage: continuous output preserves base B/A", ContinuousOutputPreservesChannels)
             };
         }
@@ -129,7 +129,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(1, statistics.PixelsWithBlueData, "B-data diagnostic mismatch.");
         }
 
-        private static void LegacyRawStates()
+        private static void ExternalRawStates()
         {
             Rgba32[] pixels =
             {
@@ -140,24 +140,24 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             MaskColorStatistics statistics;
             string error;
             Check.True(
-                MaskColorDecoder.TryDecodeLegacyRgbStateCoverage(
+                MaskColorDecoder.TryDecodeExternalRgbStateCoverage(
                     pixels,
                     2,
                     1,
                     out mask,
                     out statistics,
                     out error),
-                "Legacy RGB decode failed: " + error);
-            Check.False(mask.IsBinary, "Intermediate legacy channels require continuous storage.");
-            Check.Equal((byte)0, mask.GetHideCoverageForRawState(0, 0), "Legacy R/state 0 mismatch.");
-            Check.Equal((byte)64, mask.GetHideCoverageForRawState(0, 1), "Legacy G/state 1 mismatch.");
-            Check.Equal((byte)128, mask.GetHideCoverageForRawState(0, 2), "Legacy B/state 2 mismatch.");
-            Check.Equal((byte)0, mask.GetHideCoverageForRawState(0, 3), "Legacy Off must be neutral.");
-            Check.Equal(byte.MaxValue, mask.GetHideCoverageForRawState(1, 0), "Legacy state 0 endpoint mismatch.");
-            Check.Equal((byte)192, mask.GetHideCoverageForRawState(1, 1), "Legacy state 1 value mismatch.");
-            Check.Equal((byte)1, mask.GetHideCoverageForRawState(1, 2), "Legacy state 2 value mismatch.");
-            Check.Equal(2, statistics.LegacyStatePixels, "Legacy pixel statistic mismatch.");
-            Check.Equal(2, statistics.UnexpectedAlphaPixels, "Legacy alpha diagnostic mismatch.");
+                "External RGB decode failed: " + error);
+            Check.False(mask.IsBinary, "Intermediate external channels require continuous storage.");
+            Check.Equal((byte)0, mask.GetHideCoverageForRawState(0, 0), "External R/state 0 mismatch.");
+            Check.Equal((byte)64, mask.GetHideCoverageForRawState(0, 1), "External G/state 1 mismatch.");
+            Check.Equal((byte)128, mask.GetHideCoverageForRawState(0, 2), "External B/state 2 mismatch.");
+            Check.Equal((byte)0, mask.GetHideCoverageForRawState(0, 3), "External Off must be neutral.");
+            Check.Equal(byte.MaxValue, mask.GetHideCoverageForRawState(1, 0), "External state 0 endpoint mismatch.");
+            Check.Equal((byte)192, mask.GetHideCoverageForRawState(1, 1), "External state 1 value mismatch.");
+            Check.Equal((byte)1, mask.GetHideCoverageForRawState(1, 2), "External state 2 value mismatch.");
+            Check.Equal(2, statistics.ExternalStatePixels, "External pixel statistic mismatch.");
+            Check.Equal(2, statistics.UnexpectedAlphaPixels, "External alpha diagnostic mismatch.");
 
             byte[] stateOutput = new byte[2];
             MaskComposeWorkspace workspace = new MaskComposeWorkspace();
@@ -165,13 +165,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.SequenceEqual(
                 new byte[] { 64, 192 },
                 stateOutput,
-                "Raw state 1 must compose the legacy green channel.");
+                "Raw state 1 must compose the external green channel.");
             Array.Clear(stateOutput, 0, stateOutput.Length);
             MaskComposer.Accumulate(mask, (byte)2, 2, 1, stateOutput, workspace);
             Check.SequenceEqual(
                 new byte[] { 128, 1 },
                 stateOutput,
-                "Raw state 2 must compose the distinct legacy blue channel.");
+                "Raw state 2 must compose the distinct external blue channel.");
             Array.Clear(stateOutput, 0, stateOutput.Length);
             Check.Equal(
                 0,
@@ -577,7 +577,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(0, MaskComposer.Accumulate(second, (byte)3, 3, 1, output, workspace), "Off must contribute nothing.");
         }
 
-        private static void NativeLegacyAndBaseOverlap()
+        private static void NativeExternalAndBaseOverlap()
         {
             SemanticMask native;
             MaskColorStatistics nativeStatistics;
@@ -598,10 +598,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                     out error),
                 "Native overlap fixture must decode: " + error);
 
-            SemanticMask legacy;
-            MaskColorStatistics legacyStatistics;
+            SemanticMask external;
+            MaskColorStatistics externalStatistics;
             Check.True(
-                MaskColorDecoder.TryDecodeLegacyRgbStateCoverage(
+                MaskColorDecoder.TryDecodeExternalRgbStateCoverage(
                     new Rgba32[]
                     {
                         new Rgba32(96, 48, 16, 255),
@@ -610,10 +610,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                     },
                     3,
                     1,
-                    out legacy,
-                    out legacyStatistics,
+                    out external,
+                    out externalStatistics,
                     out error),
-                "Legacy overlap fixture must decode: " + error);
+                "External overlap fixture must decode: " + error);
 
             SemanticMask binary = new SemanticMask(
                 3,
@@ -627,12 +627,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             byte[] combined = new byte[3];
             MaskComposeWorkspace workspace = new MaskComposeWorkspace();
             MaskComposer.Accumulate(native, (byte)0, 3, 1, combined, workspace);
-            MaskComposer.Accumulate(legacy, (byte)0, 3, 1, combined, workspace);
+            MaskComposer.Accumulate(external, (byte)0, 3, 1, combined, workspace);
             MaskComposer.Accumulate(binary, (byte)0, 3, 1, combined, workspace);
             Check.SequenceEqual(
                 new byte[] { 96, 255, 128 },
                 combined,
-                "Native, legacy and binary sources must use one max-hide operation.");
+                "Native, external and binary sources must use one max-hide operation.");
 
             Rgba32[] output = new Rgba32[3];
             BodyMaskFormatAdapter.WriteContinuousBodyMask(

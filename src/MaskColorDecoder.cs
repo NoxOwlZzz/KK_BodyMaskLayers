@@ -315,7 +315,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return true;
         }
 
-        public static bool TryDecodeLegacyRgbStateCoverage(
+        public static bool TryDecodeExternalRgbStateCoverage(
             Rgba32[] pixels,
             int width,
             int height,
@@ -347,7 +347,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 state0[index] = pixel.R;
                 state1[index] = pixel.G;
                 state2[index] = pixel.B;
-                statistics.LegacyStatePixels++;
+                statistics.ExternalStatePixels++;
                 if ((pixel.R != 0 && pixel.R != byte.MaxValue) ||
                     (pixel.G != 0 && pixel.G != byte.MaxValue) ||
                     (pixel.B != 0 && pixel.B != byte.MaxValue))

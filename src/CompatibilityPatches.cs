@@ -11,8 +11,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
     public static class CompatibilityPatches
     {
-        public static bool CompositionOwnershipAllowed { get; private set; }
-
         private sealed class PartialCoordinateLoadState
         {
             public ChaControl Target;
@@ -22,7 +20,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public static void Install(Harmony harmony)
         {
-            CompositionOwnershipAllowed = ValidateChaAlphaMaskVersion();
             try
             {
                 InstallCoordinateLoadOptionBridge(harmony);
@@ -37,7 +34,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public static void LogDetectedPlugins()
         {
-            LogPlugin("nakay.kk.ChaAlphaMask", "KK_ChaAlphaMask bridge");
+            LogPlugin("nakay.kk.ChaAlphaMask", "external body-mask provider");
             LogPlugin("com.deathweasel.bepinex.materialeditor", "Material Editor");
             LogPlugin("com.deathweasel.bepinex.uncensorselector", "Uncensor Selector");
             LogPlugin("com.jim60105.kk.coordinateloadoption", "Coordinate Load Option bridge");
@@ -228,39 +225,5 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
-        private static bool ValidateChaAlphaMaskVersion()
-        {
-            PluginInfo pluginInfo;
-            if (!Chainloader.PluginInfos.TryGetValue("nakay.kk.ChaAlphaMask", out pluginInfo))
-            {
-                return true;
-            }
-
-            string version = pluginInfo.Metadata.Version == null
-                ? string.Empty
-                : pluginInfo.Metadata.Version.ToString();
-            if (string.Equals(
-                    version,
-                    NakayChaAlphaMaskProvider.AuditedVersion,
-                    StringComparison.Ordinal) ||
-                string.Equals(version, "1.0.0.0", StringComparison.Ordinal))
-            {
-                return true;
-            }
-
-            if (BodyMaskLayersPlugin.Settings.AllowUnauditedChaAlphaMask.Value)
-            {
-                BodyMaskLayersPlugin.Log.LogWarning(
-                    "Using unaudited ChaAlphaMask " + version +
-                    " because the compatibility override is enabled.");
-                return false;
-            }
-
-            BodyMaskLayersPlugin.Log.LogWarning(
-                "ChaAlphaMask " + version +
-                " is not the audited 1.0.0 contract. Custom composition is disabled conservatively; " +
-                "set 'Allow unaudited ChaAlphaMask versions=true' only after manual verification.");
-            return false;
-        }
     }
 }

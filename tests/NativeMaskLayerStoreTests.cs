@@ -121,7 +121,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 ClothingSlot.Gloves,
                 "AbCdEf",
                 new byte[] { 7 });
-            layer.SourceContract = MaskSourceContract.NakayRgbStateCoverage;
+            layer.SourceContract = MaskSourceContract.ExternalRgbStateCoverage;
             layer.GradientHandlingMode = GradientHandlingMode.PreserveContinuous;
             store.ReplaceOwned(ClothingSlot.Gloves, layer);
 
@@ -141,7 +141,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.True(
                 store.TryReuseDecoded(
                     "abcdef",
-                    MaskSourceContract.NakayRgbStateCoverage,
+                    MaskSourceContract.ExternalRgbStateCoverage,
                     GradientHandlingMode.PreserveContinuous,
                     out reusedMask,
                     out reusedStatistics),
@@ -156,7 +156,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.True(
                 store.TryReuseDecoded(
                     "ABCDEF",
-                    MaskSourceContract.NakayRgbStateCoverage,
+                    MaskSourceContract.ExternalRgbStateCoverage,
                     GradientHandlingMode.PreserveContinuous,
                     out reusedMask,
                     out secondStatistics),
@@ -175,7 +175,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.False(
                 store.TryReuseDecoded(
                     "abcdef",
-                    MaskSourceContract.NakayRgbStateCoverage,
+                    MaskSourceContract.ExternalRgbStateCoverage,
                     GradientHandlingMode.StrictCategorical,
                     out reusedMask,
                     out reusedStatistics),
@@ -183,7 +183,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.False(
                 store.TryReuseDecoded(
                     "different",
-                    MaskSourceContract.NakayRgbStateCoverage,
+                    MaskSourceContract.ExternalRgbStateCoverage,
                     GradientHandlingMode.PreserveContinuous,
                     out reusedMask,
                     out reusedStatistics),

@@ -3,44 +3,44 @@ using UnityEngine;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    internal sealed class PortableLegacyLayer
+    internal sealed class PortableExternalLayer
     {
         public ClothingMaskLayerData Layer;
         public SemanticMask SemanticMask;
         public MaskColorStatistics Statistics;
     }
 
-    internal sealed class LegacyPortableLayerConverter
+    internal sealed class ExternalPortableLayerConverter
     {
         public bool TryConvert(
             int index,
-            LegacyResolvedMask legacy,
+            ExternalResolvedMask external,
             bool structurallySuppressed,
             ClothingMaskLayerData existingNativeLayer,
             ClothingItemIdentity currentIdentity,
-            out PortableLegacyLayer converted,
+            out PortableExternalLayer converted,
             out string result)
         {
             converted = null;
             result = null;
-            if (legacy == null || legacy.SemanticMask == null)
+            if (external == null || external.SemanticMask == null)
             {
-                result = "No active legacy source is available for conversion.";
+                result = "No active external source is available for conversion.";
                 return false;
             }
 
             if (index <= (int)ClothingSlot.Top ||
                 index >= ClothingSlotRegistry.SlotCount ||
-                legacy.Descriptor == null ||
-                string.IsNullOrEmpty(legacy.Fingerprint))
+                external.Descriptor == null ||
+                string.IsNullOrEmpty(external.Fingerprint))
             {
-                result = "The legacy source does not contain enough portable provenance data.";
+                result = "The external source does not contain enough portable provenance data.";
                 return false;
             }
 
             if (structurallySuppressed)
             {
-                result = "Integrated legacy masks remain available in compatibility mode, but the current native binding schema cannot preserve this integrated-slot relationship safely.";
+                result = "Integrated external masks remain available in compatibility mode, but the current native binding schema cannot preserve this integrated-slot relationship safely.";
                 return false;
             }
 
@@ -50,10 +50,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
-            LegacyMaskDescriptor descriptor = legacy.Descriptor;
+            ExternalMaskDescriptor descriptor = external.Descriptor;
             if (descriptor.ObjectOption01.HasValue || descriptor.ObjectOption02.HasValue)
             {
-                result = "This legacy mask depends on clothing object options. It remains available in compatibility mode because the current native schema cannot preserve that conditional binding safely.";
+                result = "This external mask depends on clothing object options. It remains available in compatibility mode because the current native schema cannot preserve that conditional binding safely.";
                 return false;
             }
 
@@ -63,11 +63,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
-            int width = legacy.SemanticMask.Width;
-            int height = legacy.SemanticMask.Height;
+            int width = external.SemanticMask.Width;
+            int height = external.SemanticMask.Height;
             if (width != height)
             {
-                result = "This rectangular legacy mask works in compatibility mode but cannot be stored in the current square-PNG schema.";
+                result = "This rectangular external mask works in compatibility mode but cannot be stored in the current square-PNG schema.";
                 return false;
             }
 
@@ -77,7 +77,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 height > PortableMaskFormatLimits.MaximumDimension ||
                 (width & (width - 1)) != 0)
             {
-                result = "The legacy mask dimensions are not supported by the portable card-data format.";
+                result = "The external mask dimensions are not supported by the portable card-data format.";
                 return false;
             }
 
@@ -85,20 +85,20 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             Texture2D encoded = null;
             try
             {
-                int count = legacy.SemanticMask.PixelCount;
+                int count = external.SemanticMask.PixelCount;
                 Color32[] colors = new Color32[count];
                 for (int pixelIndex = 0; pixelIndex < count; pixelIndex++)
                 {
                     colors[pixelIndex] = new Color32(
-                        legacy.SemanticMask.GetHideCoverageForRawState(pixelIndex, 0),
-                        legacy.SemanticMask.GetHideCoverageForRawState(pixelIndex, 1),
-                        legacy.SemanticMask.GetHideCoverageForRawState(pixelIndex, 2),
+                        external.SemanticMask.GetHideCoverageForRawState(pixelIndex, 0),
+                        external.SemanticMask.GetHideCoverageForRawState(pixelIndex, 1),
+                        external.SemanticMask.GetHideCoverageForRawState(pixelIndex, 2),
                         byte.MaxValue);
                 }
 
                 encoded = new Texture2D(
-                    legacy.SemanticMask.Width,
-                    legacy.SemanticMask.Height,
+                    external.SemanticMask.Width,
+                    external.SemanticMask.Height,
                     TextureFormat.RGBA32,
                     false);
                 BodyMaskPerformanceMetrics.RecordNewTextureAllocation();
@@ -138,11 +138,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 BoundItemIdentity = binding,
                 ColorFormatVersion = 1,
                 CreatedWithPluginVersion = BodyMaskLayersPlugin.PluginVersion,
-                LastValidationResult = "Valid portable conversion: " + legacy.Statistics,
-                SourceContract = MaskSourceContract.NakayRgbStateCoverage,
+                LastValidationResult = "Valid portable conversion: " + external.Statistics,
+                SourceContract = MaskSourceContract.ExternalRgbStateCoverage,
                 GradientHandlingMode = GradientHandlingMode.PreserveContinuous,
-                SourceProviderId = LegacyMaskDescriptor.ProviderIdValue,
-                SourceFingerprint = legacy.Fingerprint,
+                SourceProviderId = ExternalMaskDescriptor.ProviderIdValue,
+                SourceFingerprint = external.Fingerprint,
                 SourceAsset = GetAssetDescription(descriptor)
             };
             MaskValidationResult convertedValidation = PngMaskValidator.Validate(pngBytes);
@@ -153,28 +153,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
-            converted = new PortableLegacyLayer
+            converted = new PortableExternalLayer
             {
                 Layer = layer,
-                SemanticMask = legacy.SemanticMask,
-                Statistics = legacy.Statistics.Clone()
+                SemanticMask = external.SemanticMask,
+                Statistics = external.Statistics.Clone()
             };
             result = "Converted to a portable native layer.";
             return true;
         }
 
-        public static bool IsPortableLegacyLayer(ClothingMaskLayerData layer)
-        {
-            return layer != null &&
-                   layer.SourceContract == MaskSourceContract.NakayRgbStateCoverage &&
-                   string.Equals(
-                       layer.SourceProviderId,
-                       LegacyMaskDescriptor.ProviderIdValue,
-                       StringComparison.OrdinalIgnoreCase) &&
-                   !string.IsNullOrEmpty(layer.SourceFingerprint);
-        }
-
-        public static string GetAssetDescription(LegacyMaskDescriptor descriptor)
+        public static string GetAssetDescription(ExternalMaskDescriptor descriptor)
         {
             return descriptor.IsPng
                 ? descriptor.PngPath

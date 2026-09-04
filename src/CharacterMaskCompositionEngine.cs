@@ -7,14 +7,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     internal sealed class CharacterMaskCompositionEngine
     {
         private readonly NativeMaskLayerStore nativeLayers;
-        private readonly CharacterLegacyMaskSession legacySession;
+        private readonly CharacterExternalMaskSession externalSession;
         private readonly CharacterClothingRuntime runtimeState;
         private readonly CharacterBodyMaskMaterialTarget materialTarget;
         private readonly MaskCompositionResources resources;
         private readonly CompositionScheduler scheduler = new CompositionScheduler();
         private readonly bool[] activeNative =
             new bool[ClothingSlotRegistry.SlotCount];
-        private readonly bool[] activeLegacy =
+        private readonly bool[] activeExternal =
             new bool[ClothingSlotRegistry.SlotCount];
         private readonly GarmentState[] compositionStates =
             new GarmentState[ClothingSlotRegistry.SlotCount];
@@ -27,7 +27,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public CharacterMaskCompositionEngine(
             NativeMaskLayerStore layerStore,
-            CharacterLegacyMaskSession legacyMaskSession,
+            CharacterExternalMaskSession externalMaskSession,
             CharacterClothingRuntime clothingRuntime,
             CharacterBodyMaskMaterialTarget bodyMaterialTarget,
             MaskCompositionResources compositionResources)
@@ -37,9 +37,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 throw new ArgumentNullException("layerStore");
             }
 
-            if (legacyMaskSession == null)
+            if (externalMaskSession == null)
             {
-                throw new ArgumentNullException("legacyMaskSession");
+                throw new ArgumentNullException("externalMaskSession");
             }
 
             if (clothingRuntime == null)
@@ -58,7 +58,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             nativeLayers = layerStore;
-            legacySession = legacyMaskSession;
+            externalSession = externalMaskSession;
             runtimeState = clothingRuntime;
             materialTarget = bodyMaterialTarget;
             resources = compositionResources;
@@ -94,8 +94,16 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
-            Rebuild(character, ownerInstanceId);
-            return true;
+            try
+            {
+                Rebuild(character, ownerInstanceId);
+                return true;
+            }
+            catch
+            {
+                scheduler.RestoreDirty(pendingReasons);
+                throw;
+            }
         }
 
         public bool IsNativeLayerActive(ChaControl character, int index)
@@ -125,14 +133,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         {
             lastCompositionReason = lastDirtyReason;
             if (!BodyMaskLayersPlugin.Settings.Enabled.Value)
-            {
-                materialTarget.Restore();
-                resources.Release();
-                return;
-            }
-
-            if (!CompatibilityPatches.CompositionOwnershipAllowed &&
-                !BodyMaskLayersPlugin.Settings.AllowUnauditedChaAlphaMask.Value)
             {
                 materialTarget.Restore();
                 resources.Release();
@@ -198,17 +198,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     activeCount++;
                 }
 
-                LegacyResolvedMask legacy =
-                    legacySession.GetResolution((ClothingSlot)index);
-                byte legacyRawState = eligible || legacy != null
+                ExternalResolvedMask external =
+                    externalSession.GetResolution((ClothingSlot)index);
+                byte externalRawState = eligible || external != null
                     ? runtimeState.GetRawState(character, index)
                     : (byte)3;
-                bool legacyContributes = IsLegacyLayerActive(index) &&
-                                         legacyRawState <= 2 &&
-                                         legacy.SemanticMask.Compiled.HasAnyCoverage(legacyRawState) &&
-                                         !IsLegacySuppressedByNative(character, index, legacy);
-                activeLegacy[index] = legacyContributes;
-                if (legacyContributes)
+                bool externalContributes = IsExternalLayerActive(index) &&
+                                         externalRawState <= 2 &&
+                                         external.SemanticMask.Compiled.HasAnyCoverage(externalRawState) &&
+                                         !IsExternalSuppressedByNative(character, index, external);
+                activeExternal[index] = externalContributes;
+                if (externalContributes)
                 {
                     activeCount++;
                 }
@@ -217,7 +217,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             if (activeCount == 0)
             {
                 materialTarget.Restore();
-                if (!HasDecodedLayer() && !HasResolvedLegacyLayer())
+                if (!HasDecodedLayer() && !HasResolvedExternalLayer())
                 {
                     resources.Release();
                 }
@@ -253,7 +253,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             SelectOutputSize(
                 character,
                 activeNative,
-                activeLegacy,
+                activeExternal,
                 baseTexture,
                 out width,
                 out height);
@@ -276,12 +276,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                         resources.Workspace);
                 }
 
-                if (activeLegacy[index])
+                if (activeExternal[index])
                 {
-                    LegacyResolvedMask legacy =
-                        legacySession.GetResolution((ClothingSlot)index);
+                    ExternalResolvedMask external =
+                        externalSession.GetResolution((ClothingSlot)index);
                     customHiddenCount += MaskComposer.Accumulate(
-                        legacy.SemanticMask,
+                        external.SemanticMask,
                         runtimeState.GetRawState(character, index),
                         width,
                         height,
@@ -367,13 +367,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return false;
         }
 
-        private bool HasResolvedLegacyLayer()
+        private bool HasResolvedExternalLayer()
         {
             for (int index = 1; index < ClothingSlotRegistry.SlotCount; index++)
             {
-                LegacyResolvedMask legacy =
-                    legacySession.GetResolution((ClothingSlot)index);
-                if (legacy != null && legacy.SemanticMask != null)
+                ExternalResolvedMask external =
+                    externalSession.GetResolution((ClothingSlot)index);
+                if (external != null && external.SemanticMask != null)
                 {
                     return true;
                 }
@@ -382,17 +382,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return false;
         }
 
-        private bool IsLegacyLayerActive(int index)
+        private bool IsExternalLayerActive(int index)
         {
-            LegacyResolvedMask legacy = index > 0 && index < ClothingSlotRegistry.SlotCount
-                ? legacySession.GetResolution((ClothingSlot)index)
+            ExternalResolvedMask external = index > 0 && index < ClothingSlotRegistry.SlotCount
+                ? externalSession.GetResolution((ClothingSlot)index)
                 : null;
-            if (!NakayChaAlphaMaskProvider.DirectCompatibilityActive ||
-                !BodyMaskLayersPlugin.Settings.Enabled.Value || legacy == null ||
-                legacy.SemanticMask == null ||
-                legacySession.IsFingerprintSuppressed(
+            if (!ExternalMaskProvider.DirectCompatibilityActive ||
+                !BodyMaskLayersPlugin.Settings.Enabled.Value || external == null ||
+                external.SemanticMask == null ||
+                externalSession.IsFingerprintSuppressed(
                     (ClothingSlot)index,
-                    legacy.Fingerprint) ||
+                    external.Fingerprint) ||
                 !LayerEligibilityEvaluator.IsSelectedShoe(index, runtimeState.ShoesType))
             {
                 return false;
@@ -402,15 +402,15 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                    (runtimeState.AvailabilityMask & (1 << index)) != 0;
         }
 
-        private bool IsLegacySuppressedByNative(
+        private bool IsExternalSuppressedByNative(
             ChaControl character,
             int index,
-            LegacyResolvedMask legacy)
+            ExternalResolvedMask external)
         {
             NativeMaskLayerSlotState native = nativeLayers.Get((ClothingSlot)index);
             NativeLayerEligibilityContext context =
                 runtimeState.CreateEligibilityContext(index, true);
-            if (!LayerEligibilityEvaluator.CanNativeOwnLegacySourceWithoutCurrentIdentity(
+            if (!LayerEligibilityEvaluator.CanNativeOwnExternalSourceWithoutCurrentIdentity(
                     native.Layer,
                     native.SemanticMask != null,
                     context))
@@ -418,10 +418,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
-            return LayerEligibilityEvaluator.NativeOwnsLegacySourceAfterPrecheck(
+            return LayerEligibilityEvaluator.NativeOwnsExternalSourceAfterPrecheck(
                 native.Layer,
                 runtimeState.GetCurrentIdentity(character, (ClothingSlot)index),
-                legacy == null ? null : legacy.Fingerprint);
+                external == null ? null : external.Fingerprint);
         }
 
         private bool HasActiveContinuousContribution()
@@ -434,10 +434,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     return true;
                 }
 
-                LegacyResolvedMask legacy =
-                    legacySession.GetResolution((ClothingSlot)index);
-                if (activeLegacy[index] && legacy != null &&
-                    !legacy.SemanticMask.IsBinary)
+                ExternalResolvedMask external =
+                    externalSession.GetResolution((ClothingSlot)index);
+                if (activeExternal[index] && external != null &&
+                    !external.SemanticMask.IsBinary)
                 {
                     return true;
                 }
@@ -457,7 +457,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private void SelectOutputSize(
             ChaControl character,
             bool[] active,
-            bool[] legacyActive,
+            bool[] externalActive,
             Texture baseTexture,
             out int width,
             out int height)
@@ -481,13 +481,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                         Math.Max(native.Width, native.Height));
                 }
 
-                LegacyResolvedMask legacy =
-                    legacySession.GetResolution((ClothingSlot)index);
-                if (legacy != null && legacy.SemanticMask != null)
+                ExternalResolvedMask external =
+                    externalSession.GetResolution((ClothingSlot)index);
+                if (external != null && external.SemanticMask != null)
                 {
                     dimension = Math.Max(
                         dimension,
-                        Math.Max(legacy.SemanticMask.Width, legacy.SemanticMask.Height));
+                        Math.Max(external.SemanticMask.Width, external.SemanticMask.Height));
                 }
             }
 
@@ -547,7 +547,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return CompositionDirtyReason.NativeLayerChanged;
             }
 
-            if (reason.IndexOf("legacy", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            if (reason.IndexOf("external", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 reason.IndexOf("index", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return reason.IndexOf("converted", StringComparison.OrdinalIgnoreCase) >= 0

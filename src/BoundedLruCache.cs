@@ -81,21 +81,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return true;
         }
 
-        public bool TryPeekValue(TKey key, out TValue value)
-        {
-            SynchronizeMemoryCounter();
-
-            LinkedListNode<Entry> node;
-            if (!entries.TryGetValue(key, out node))
-            {
-                value = default(TValue);
-                return false;
-            }
-
-            value = node.Value.Value;
-            return true;
-        }
-
         public bool Put(TKey key, TValue value, long sizeBytes)
         {
             if (sizeBytes <= 0L)
@@ -140,22 +125,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             RemoveNode(node, false);
             SynchronizeMemoryCounter();
             return true;
-        }
-
-        public void SetMemoryLimit(long maxBytes)
-        {
-            if (maxBytes <= 0L)
-            {
-                throw new ArgumentOutOfRangeException("maxBytes");
-            }
-
-            MaxBytes = maxBytes;
-            while (currentBytes > MaxBytes && recency.Last != null)
-            {
-                RemoveNode(recency.Last, true);
-            }
-
-            SynchronizeMemoryCounter();
         }
 
         public void Clear()

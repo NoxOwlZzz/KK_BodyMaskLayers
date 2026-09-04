@@ -7,9 +7,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
 {
     internal static class PureLogicTests
     {
-        private const string LegacySchema1FixtureBase64 =
+        private const string Schema1FixtureBase64 =
             "Qk1MMQEAAAABAAAAAgAAAAAAAQAAAAEAAAEAAAABAwAAAAsAAABsZWdhY3ktaGFzaAUAAAAwLjEuMg4AAABsZWdhY3kgZml4dHVyZQECAAAAawAAAOEQAADSBAAACgAAAGxlZ2FjeS5tb2QEAAAAaXRlbQQAAABJSktM";
-        private const string LegacySchema1FixtureSha256 =
+        private const string Schema1FixtureSha256 =
             "59f02b0530d7eebd7c73a2316f8d9d0f8c92763cd7f9f5a0db2a1405f51eacf6";
 
         public static TestCase[] All()
@@ -45,7 +45,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 new TestCase("PNG: bit depth, color type and internal byte limit", PngFormatAndByteLimits),
                 new TestCase("dimensions: representable pixel counts", MaskDimensionPixelCounts),
                 new TestCase("serializer: complete roundtrip", SerializerCompleteRoundTrip),
-                new TestCase("serializer: BML1 golden migration defaults", SerializerLegacySchemaMigration),
+                new TestCase("serializer: BML1 golden migration defaults", SerializerSchema1Migration),
                 new TestCase("serializer: multiple, null and duplicate layers", SerializerCollections),
                 new TestCase("serializer: envelope corruption", SerializerEnvelopeCorruption),
                 new TestCase("serializer: exhaustive truncation and layer corruption", SerializerLayerCorruption),
@@ -1292,7 +1292,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 67890,
                 "NightOwlZzz.mod");
             layer.BoundItemIdentity.DisplayName = "Prenda ñ";
-            layer.SourceContract = MaskSourceContract.NakayRgbStateCoverage;
+            layer.SourceContract = MaskSourceContract.ExternalRgbStateCoverage;
             layer.GradientHandlingMode = GradientHandlingMode.PreserveContinuous;
             layer.SourceProviderId = "nakay.kk.ChaAlphaMask";
             layer.SourceFingerprint = "f0e1d2c3b4a5";
@@ -1334,26 +1334,31 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(layer.BoundItemIdentity.DisplayName, restored.BoundItemIdentity.DisplayName, "Identity display name mismatch.");
         }
 
-        private static void SerializerLegacySchemaMigration()
+        private static void SerializerSchema1Migration()
         {
-            ClothingMaskLayerData legacy = Layer(ClothingSlot.Bra, 73);
-            legacy.Enabled = false;
-            legacy.Width = 256;
-            legacy.Height = 256;
-            legacy.ColorFormatVersion = 1;
-            legacy.OptionalStatePolicy = UnknownStatePolicy.PreserveLastKnown;
-            legacy.Hash = "legacy-hash";
-            legacy.CreatedWithPluginVersion = "0.1.2";
-            legacy.LastValidationResult = "legacy fixture";
-            legacy.BoundItemIdentity = Identity(ClothingSlot.Bra, 107, 4321, 1234, "legacy.mod");
+            ClothingMaskLayerData schema1Layer = Layer(ClothingSlot.Bra, 73);
+            schema1Layer.Enabled = false;
+            schema1Layer.Width = 256;
+            schema1Layer.Height = 256;
+            schema1Layer.ColorFormatVersion = 1;
+            schema1Layer.OptionalStatePolicy = UnknownStatePolicy.PreserveLastKnown;
+            schema1Layer.Hash = "legacy-hash";
+            schema1Layer.CreatedWithPluginVersion = "0.1.2";
+            schema1Layer.LastValidationResult = "legacy fixture";
+            schema1Layer.BoundItemIdentity = Identity(
+                ClothingSlot.Bra,
+                107,
+                4321,
+                1234,
+                "legacy.mod");
 
-            byte[] fixture = Convert.FromBase64String(LegacySchema1FixtureBase64);
+            byte[] fixture = Convert.FromBase64String(Schema1FixtureBase64);
             Check.Equal(
-                LegacySchema1FixtureSha256,
+                Schema1FixtureSha256,
                 HashUtility.Sha256(fixture),
                 "Pinned BML1 fixture bytes changed.");
             Check.Equal(
-                CardDataSerializer.LegacySchemaVersion,
+                CardDataSerializer.Schema1Version,
                 ReadInt32LittleEndian(fixture, 4),
                 "Fixture schema mismatch.");
 
@@ -1363,12 +1368,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 CardDataSerializer.TryDeserialize(fixture, out layers, out error),
                 "BML1 fixture must load unchanged: " + error);
             ClothingMaskLayerData restored = layers[ClothingSlot.Bra];
-            Check.Equal(legacy.Enabled, restored.Enabled, "BML1 enabled flag mismatch.");
-            Check.Equal(legacy.Width, restored.Width, "BML1 width mismatch.");
-            Check.Equal(legacy.Height, restored.Height, "BML1 height mismatch.");
-            Check.Equal(legacy.Hash, restored.Hash, "BML1 hash mismatch.");
-            Check.Equal(legacy.OptionalStatePolicy, restored.OptionalStatePolicy, "BML1 policy mismatch.");
-            Check.SequenceEqual(legacy.OriginalPngBytes, restored.OriginalPngBytes, "BML1 original PNG mismatch.");
+            Check.Equal(schema1Layer.Enabled, restored.Enabled, "BML1 enabled flag mismatch.");
+            Check.Equal(schema1Layer.Width, restored.Width, "BML1 width mismatch.");
+            Check.Equal(schema1Layer.Height, restored.Height, "BML1 height mismatch.");
+            Check.Equal(schema1Layer.Hash, restored.Hash, "BML1 hash mismatch.");
+            Check.Equal(schema1Layer.OptionalStatePolicy, restored.OptionalStatePolicy, "BML1 policy mismatch.");
+            Check.SequenceEqual(schema1Layer.OriginalPngBytes, restored.OriginalPngBytes, "BML1 original PNG mismatch.");
             Check.Equal(
                 MaskSourceContract.Native,
                 restored.SourceContract,
@@ -1376,7 +1381,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(
                 GradientHandlingMode.StrictCategorical,
                 restored.GradientHandlingMode,
-                "BML1 must preserve the historical categorical interpretation.");
+                "BML1 must use its deterministic categorical interpretation.");
             Check.Null(restored.SourceProviderId, "BML1 must not invent a source provider.");
             Check.Null(restored.SourceFingerprint, "BML1 must not invent a source fingerprint.");
             Check.Null(restored.SourceAsset, "BML1 must not invent a source asset.");
@@ -1387,7 +1392,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 ReadInt32LittleEndian(migrated, 4),
                 "Migrated data must write BML2.");
             Check.SequenceEqual(
-                legacy.OriginalPngBytes,
+                schema1Layer.OriginalPngBytes,
                 layers[ClothingSlot.Bra].OriginalPngBytes,
                 "Migration must not replace or compile the source PNG.");
 
@@ -1665,7 +1670,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
 
             ClothingMaskLayerData original = Layer(ClothingSlot.Bra, 44);
             original.BoundItemIdentity = Identity(ClothingSlot.Bra, 107, 100, 200, "guid");
-            original.SourceContract = MaskSourceContract.NakayRgbStateCoverage;
+            original.SourceContract = MaskSourceContract.ExternalRgbStateCoverage;
             original.GradientHandlingMode = GradientHandlingMode.PreserveContinuous;
             original.SourceProviderId = "provider";
             original.SourceFingerprint = "fingerprint";

@@ -5,19 +5,19 @@ using System.Xml;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    public delegate int LegacyResolvedItemIdResolver(int originalItemId, int category, string modGuid);
+    public delegate int ExternalResolvedItemIdResolver(int originalItemId, int category, string modGuid);
 
-    public static class LegacyManifestParser
+    public static class ExternalManifestParser
     {
         public const int ParserVersion = 1;
 
-        public static IList<LegacyMaskDescriptor> Parse(
-            LegacyManifestSource source,
-            LegacyResolvedItemIdResolver idResolver,
+        public static IList<ExternalMaskDescriptor> Parse(
+            ExternalManifestSource source,
+            ExternalResolvedItemIdResolver idResolver,
             out int rejectedEntries)
         {
             rejectedEntries = 0;
-            List<LegacyMaskDescriptor> result = new List<LegacyMaskDescriptor>();
+            List<ExternalMaskDescriptor> result = new List<ExternalMaskDescriptor>();
             if (source == null || string.IsNullOrEmpty(source.ManifestXml))
             {
                 return result;
@@ -43,7 +43,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     continue;
                 }
 
-                LegacyMaskDescriptor descriptor;
+                ExternalMaskDescriptor descriptor;
                 if (!TryParseMask(mask, manifestGuid, source, idResolver, sourceOrder, out descriptor))
                 {
                     rejectedEntries++;
@@ -60,10 +60,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private static bool TryParseMask(
             XmlElement mask,
             string fallbackGuid,
-            LegacyManifestSource source,
-            LegacyResolvedItemIdResolver idResolver,
+            ExternalManifestSource source,
+            ExternalResolvedItemIdResolver idResolver,
             int sourceOrder,
-            out LegacyMaskDescriptor descriptor)
+            out ExternalMaskDescriptor descriptor)
         {
             descriptor = null;
             int category;
@@ -91,7 +91,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 resolvedItemId = idResolver(originalItemId, category, guid);
             }
 
-            descriptor = new LegacyMaskDescriptor();
+            descriptor = new ExternalMaskDescriptor();
             descriptor.SourceOrder = sourceOrder;
             descriptor.ModGuid = guid;
             descriptor.ArchivePath = source.ArchivePath;

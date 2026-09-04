@@ -8,7 +8,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private static readonly Type ResolverType = Type.GetType(
             "Sideloader.AutoResolver.UniversalAutoResolver, Sideloader", false);
         private static readonly MethodInfo TryGetResolutionInfo = FindResolutionMethod();
-        private static readonly MethodInfo TryGetLegacyResolutionInfo = FindLegacyResolutionMethod();
+        private static readonly MethodInfo TryGetExternalResolutionInfo = FindExternalResolutionMethod();
 
         public static ClothingItemIdentity Resolve(ChaControl character, ClothingSlot slot)
         {
@@ -71,9 +71,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
-        public static int ResolveLegacyLocalItemId(int originalItemId, int category, string modGuid)
+        public static int ResolveExternalLocalItemId(int originalItemId, int category, string modGuid)
         {
-            if (TryGetLegacyResolutionInfo == null || originalItemId <= 0 ||
+            if (TryGetExternalResolutionInfo == null || originalItemId <= 0 ||
                 string.IsNullOrEmpty(modGuid))
             {
                 return originalItemId;
@@ -81,7 +81,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
             try
             {
-                object resolved = TryGetLegacyResolutionInfo.Invoke(null, new object[]
+                object resolved = TryGetExternalResolutionInfo.Invoke(null, new object[]
                 {
                     originalItemId,
                     (ChaListDefine.CategoryNo)category,
@@ -98,7 +98,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             catch (Exception exception)
             {
                 BodyMaskLayersPlugin.LogDebug(
-                    "Sideloader legacy item lookup failed: " + exception.Message);
+                    "Sideloader external item lookup failed: " + exception.Message);
                 return originalItemId;
             }
         }
@@ -131,7 +131,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return null;
         }
 
-        private static MethodInfo FindLegacyResolutionMethod()
+        private static MethodInfo FindExternalResolutionMethod()
         {
             if (ResolverType == null)
             {

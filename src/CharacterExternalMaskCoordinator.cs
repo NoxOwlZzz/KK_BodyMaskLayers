@@ -2,24 +2,24 @@ using System;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    internal sealed class CharacterLegacyMaskCoordinator
+    internal sealed class CharacterExternalMaskCoordinator
     {
-        private readonly CharacterLegacyMaskSession session;
+        private readonly CharacterExternalMaskSession session;
         private readonly NativeMaskLayerStore nativeLayers;
         private readonly CharacterNativeMaskService nativeMasks;
         private readonly CharacterClothingRuntime runtimeState;
         private readonly ICharacterMaskMutationSink mutationSink;
 
-        public CharacterLegacyMaskCoordinator(
-            CharacterLegacyMaskSession legacySession,
+        public CharacterExternalMaskCoordinator(
+            CharacterExternalMaskSession externalSession,
             NativeMaskLayerStore layerStore,
             CharacterNativeMaskService nativeMaskService,
             CharacterClothingRuntime clothingRuntime,
             ICharacterMaskMutationSink sink)
         {
-            if (legacySession == null)
+            if (externalSession == null)
             {
-                throw new ArgumentNullException("legacySession");
+                throw new ArgumentNullException("externalSession");
             }
 
             if (layerStore == null)
@@ -42,7 +42,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 throw new ArgumentNullException("sink");
             }
 
-            session = legacySession;
+            session = externalSession;
             nativeLayers = layerStore;
             nativeMasks = nativeMaskService;
             runtimeState = clothingRuntime;
@@ -56,8 +56,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
-            LegacyResolvedMask legacy = session.GetResolution(slot);
-            return legacy != null && legacy.SemanticMask != null;
+            ExternalResolvedMask external = session.GetResolution(slot);
+            return external != null && external.SemanticMask != null;
         }
 
         public string DescribeDetails(ClothingSlot slot)
@@ -67,57 +67,73 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 throw new IndexOutOfRangeException();
             }
 
-            LegacyResolvedMask legacy = session.GetResolution(slot);
-            if (legacy == null)
+            ExternalResolvedMask external = session.GetResolution(slot);
+            if (external == null)
             {
-                return session.GetStatus(slot) ?? "No resolved legacy source.";
+                return session.GetStatus(slot) ?? "No resolved external source.";
             }
 
-            LegacyMaskDescriptor descriptor = legacy.Descriptor;
+            ExternalMaskDescriptor descriptor = external.Descriptor;
             return string.Format(
                 "provider={0}; contract={1}; modGuid={2}; slot={3}; category={4}; originalId={5}; " +
                 "asset={6}; fingerprint={7}; gradientMode=PreserveContinuous; kind={8}; stats=[{9}]; " +
                 "cacheGeneration={10}; resolutionStatus={11}",
-                LegacyMaskDescriptor.ProviderIdValue,
-                LegacyMaskDescriptor.ContractVersionValue,
+                ExternalMaskDescriptor.ProviderIdValue,
+                ExternalMaskDescriptor.ContractVersionValue,
                 descriptor.ModGuid ?? "<none>",
                 slot,
                 descriptor.Category,
                 descriptor.OriginalItemId,
-                LegacyPortableLayerConverter.GetAssetDescription(descriptor),
-                legacy.Fingerprint,
-                legacy.IsContinuous ? "Continuous" : "Binary",
-                legacy.Statistics,
-                legacy.CatalogGeneration,
+                ExternalPortableLayerConverter.GetAssetDescription(descriptor),
+                external.Fingerprint,
+                external.IsContinuous ? "Continuous" : "Binary",
+                external.Statistics,
+                external.CatalogGeneration,
                 session.GetStatus(slot) ?? "resolved");
         }
 
         public void Refresh(ChaControl character)
         {
+            FlushPendingConvertedData();
+
             if (!session.HasDirtySlots)
             {
                 return;
             }
 
-            if (!NakayChaAlphaMaskProvider.DirectCompatibilityActive)
+            if (!ExternalMaskProvider.DirectCompatibilityActive)
             {
                 bool removed = session.ClearProviderResolutions(
-                    NakayChaAlphaMaskProvider.IsLegacyPluginInstalled
-                        ? "Upstream KK_ChaAlphaMask bridge active."
-                        : "Legacy compatibility disabled.");
+                    ExternalMaskProvider.IsSourceProviderInstalled
+                        ? "A separate body-mask provider is active."
+                        : "Compatible source loading is unavailable.");
                 if (removed)
                 {
                     mutationSink.RequestMaskDirty(
-                        "legacy provider ownership change",
+                        "external provider ownership change",
                         false);
                 }
 
                 return;
             }
 
-            LegacyDirtySlotSet pending = session.ConsumeDirtySlots();
+            ExternalDirtySlotSet pending = session.ConsumeDirtySlots();
+            try
+            {
+                RefreshPending(character, pending);
+            }
+            catch
+            {
+                session.DeferSlots(pending);
+                throw;
+            }
+        }
+
+        private void RefreshPending(
+            ChaControl character,
+            ExternalDirtySlotSet pending)
+        {
             session.BeginAutoConversionRefresh();
-            bool convertedAny = false;
             for (int index = 1; index < ClothingSlotRegistry.SlotCount; index++)
             {
                 ClothingSlot slot = (ClothingSlot)index;
@@ -126,7 +142,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     continue;
                 }
 
-                LegacyResolvedMask previous = session.GetResolution(slot);
+                ExternalResolvedMask previous = session.GetResolution(slot);
                 if (!LayerEligibilityEvaluator.IsSelectedShoe(
                         index,
                         runtimeState.ShoesType))
@@ -138,16 +154,16 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     if (previous != null)
                     {
                         mutationSink.RequestMaskDirty(
-                            "legacy shoe source became inactive",
+                            "external shoe source became inactive",
                             false);
                     }
 
                     continue;
                 }
 
-                LegacyResolvedMask resolved;
+                ExternalResolvedMask resolved;
                 string status;
-                bool found = NakayChaAlphaMaskProvider.TryResolveForCharacter(
+                bool found = ExternalMaskProvider.TryResolveForCharacter(
                     character,
                     slot,
                     out resolved,
@@ -155,84 +171,94 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 if (session.SetResolution(slot, found ? resolved : null, status))
                 {
                     mutationSink.RequestMaskDirty(
-                        "legacy source resolution change",
+                        "external source resolution change",
                         false);
                 }
 
                 if (found)
                 {
-                    convertedAny |= TryAutomaticallyConvert(character, index, resolved);
+                    ProcessAutomaticConversion(character, index, resolved);
                 }
-            }
-
-            if (convertedAny)
-            {
-                mutationSink.RequestMaskDirty(
-                    "legacy sources automatically converted",
-                    false);
-                mutationSink.PersistMaskData();
             }
         }
 
-        private bool TryAutomaticallyConvert(
+        private void FlushPendingConvertedData()
+        {
+            if (!session.ConvertedDataPersistencePending)
+            {
+                return;
+            }
+
+            mutationSink.RequestMaskDirty(
+                "external sources automatically converted",
+                false);
+            mutationSink.PersistMaskData();
+            session.CompleteConvertedDataPersistence();
+        }
+
+        private void ProcessAutomaticConversion(
             ChaControl character,
             int index,
-            LegacyResolvedMask legacy)
+            ExternalResolvedMask external)
         {
-            if (!BodyMaskLayersPlugin.Settings.AutoConvertNakayLegacyMasks.Value ||
-                legacy == null || legacy.SemanticMask == null ||
+            if (external == null || external.SemanticMask == null ||
                 nativeLayers.Get((ClothingSlot)index).Layer != null)
             {
-                return false;
+                return;
             }
 
             ClothingSlot slot = (ClothingSlot)index;
-            if (session.IsFingerprintSuppressed(slot, legacy.Fingerprint))
+            if (session.IsFingerprintSuppressed(slot, external.Fingerprint))
             {
-                return false;
+                return;
             }
 
-            string attemptKey = BuildAutoConversionAttemptKey(character, index, legacy);
+            string attemptKey = BuildAutoConversionAttemptKey(character, index, external);
             if (session.TryBeginAutoConversionAttempt(slot, attemptKey) !=
-                LegacyAutoConversionAttemptDecision.Granted)
+                ExternalAutoConversionAttemptDecision.Granted)
             {
-                return false;
+                return;
             }
 
             string conversionResult;
-            bool converted = nativeMasks.TryConvertLegacy(
+            bool converted = nativeMasks.TryConvertExternal(
                 character,
                 index,
-                legacy,
+                external,
                 out conversionResult);
+            if (converted)
+            {
+                session.MarkConvertedDataPersistencePending();
+                FlushPendingConvertedData();
+            }
+
             BodyMaskLayersPlugin.LogDebug(
                 (converted ? "Automatically converted " :
                     "Automatic conversion skipped for ") +
                 ClothingSlotRegistry.GetDisplayName(slot) + ": " +
                 conversionResult);
-            return converted;
         }
 
         private string BuildAutoConversionAttemptKey(
             ChaControl character,
             int index,
-            LegacyResolvedMask legacy)
+            ExternalResolvedMask external)
         {
             ClothingItemIdentity identity = runtimeState.GetCurrentIdentity(
                 character,
                 (ClothingSlot)index);
             return string.Format(
                 "{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}",
-                legacy == null ? string.Empty : legacy.Fingerprint ?? string.Empty,
+                external == null ? string.Empty : external.Fingerprint ?? string.Empty,
                 identity == null ? 0 : identity.Category,
                 identity == null ? 0 : identity.LocalItemId,
                 identity == null ? 0 : identity.OriginalItemId,
                 identity == null ? string.Empty : identity.SideloaderGuid ?? string.Empty,
                 runtimeState.StructuralFlags,
-                legacy == null || legacy.SemanticMask == null ? 0 :
-                    legacy.SemanticMask.Width,
-                legacy == null || legacy.SemanticMask == null ? 0 :
-                    legacy.SemanticMask.Height);
+                external == null || external.SemanticMask == null ? 0 :
+                    external.SemanticMask.Width,
+                external == null || external.SemanticMask == null ? 0 :
+                    external.SemanticMask.Height);
         }
     }
 }

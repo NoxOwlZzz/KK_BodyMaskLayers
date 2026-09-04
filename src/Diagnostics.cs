@@ -16,7 +16,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             logger.LogInfo("Shader contract: _AlphaMask RG + _alpha_a/_alpha_b; output preserves base B/A.");
             logger.LogInfo("Slots: Top, Bottom, Bra, Shorts, Gloves, Pantyhose, Socks, IndoorShoes, OutdoorShoes.");
             logger.LogInfo("State map: raw 0=Full, 1/2=Partial, 3=Off; unexpected values use configured policy.");
-            logger.LogInfo("Compatibility bridge ordering: after nakay.kk.ChaAlphaMask when present.");
+            logger.LogInfo("External body-mask writes are treated as the composition base.");
         }
 
         public static string BuildCharacterSnapshot(BodyMaskCharacterController controller)
@@ -54,10 +54,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     .Append(": ")
                     .Append(controller.DescribeLayer((ClothingSlot)i))
                     .AppendLine();
-                if (controller.HasLegacySource((ClothingSlot)i))
+                if (controller.HasExternalSource((ClothingSlot)i))
                 {
-                    builder.Append("      legacy: ")
-                        .Append(controller.DescribeLegacyDetails((ClothingSlot)i))
+                    builder.Append("      external: ")
+                        .Append(controller.DescribeExternalDetails((ClothingSlot)i))
                         .AppendLine();
                 }
             }
@@ -75,11 +75,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             AppendPlugin(builder, "com.deathweasel.bepinex.uncensorselector", "UncensorSelector");
             AppendPlugin(builder, "com.jim60105.kk.coordinateloadoption", "CoordinateLoadOption");
             AppendPlugin(builder, "com.bepis.bepinex.sideloader", "Sideloader");
-            builder.Append("ownershipAllowed=").Append(CompatibilityPatches.CompositionOwnershipAllowed)
-                .Append(", unauditedOverride=")
-                .Append(BodyMaskLayersPlugin.Settings.AllowUnauditedChaAlphaMask.Value)
-                .AppendLine()
-                .Append(NakayChaAlphaMaskProvider.BuildIndexSummary());
+            builder.AppendLine()
+                .Append(ExternalMaskProvider.BuildIndexSummary());
             return builder.ToString();
         }
 

@@ -572,14 +572,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public int AmbiguousPixels;
         public int PackedDataPixels;
         public int PixelsWithBlueData;
-        public int LegacyStatePixels;
+        public int ExternalStatePixels;
 
         public int TotalPixels
         {
             get
             {
                 return YellowPixels + GreenPixels + BlackPixels + RedPixels + BluePixels +
-                       UnknownPixels + ContinuousPixels + LegacyStatePixels;
+                       UnknownPixels + ContinuousPixels + ExternalStatePixels;
             }
         }
 
@@ -591,7 +591,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public override string ToString()
         {
             return string.Format(
-                "yellow={0}, green={1}, black={2}, red={3}, blue={4}, unknown={5}, continuous={6}, edge={7}, ambiguous={8}, packed={9}, blueData={10}, legacy={11}, alphaUnexpected={12}",
+                "yellow={0}, green={1}, black={2}, red={3}, blue={4}, unknown={5}, continuous={6}, edge={7}, ambiguous={8}, packed={9}, blueData={10}, external={11}, alphaUnexpected={12}",
                 YellowPixels,
                 GreenPixels,
                 BlackPixels,
@@ -603,7 +603,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 AmbiguousPixels,
                 PackedDataPixels,
                 PixelsWithBlueData,
-                LegacyStatePixels,
+                ExternalStatePixels,
                 UnexpectedAlphaPixels);
         }
     }

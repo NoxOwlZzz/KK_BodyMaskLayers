@@ -76,7 +76,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 store,
                 ClothingSlot.Gloves,
                 bytes,
-                MaskSourceContract.NakayRgbStateCoverage,
+                MaskSourceContract.ExternalRgbStateCoverage,
                 GradientHandlingMode.PreserveContinuous,
                 cachedMask,
                 cachedStatistics);
@@ -94,7 +94,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                         bytes,
                         hash.ToUpperInvariant(),
                         1,
-                        MaskSourceContract.NakayRgbStateCoverage,
+                        MaskSourceContract.ExternalRgbStateCoverage,
                         GradientHandlingMode.PreserveContinuous,
                         false));
 
@@ -108,7 +108,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Same(bytes, validator.LastBytes, "Revalidation must inspect the supplied bytes.");
             Check.Equal(0, decoder.CallCount, "A valid cache hit must avoid decoding.");
             Check.Equal(
-                "Valid using cached identical decode: yellow=0, green=3, black=0, red=0, blue=0, unknown=0, continuous=0, edge=2, ambiguous=0, packed=0, blueData=0, legacy=0, alphaUnexpected=0",
+                "Valid using cached identical decode: yellow=0, green=3, black=0, red=0, blue=0, unknown=0, continuous=0, edge=2, ambiguous=0, packed=0, blueData=0, external=0, alphaUnexpected=0",
                 result.BuildValidationDescription(),
                 "Cached validation text must remain exact.");
         }
@@ -166,7 +166,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(7, result.NormalizedPixelCount, "Normalization count must be returned.");
             Check.Null(result.Error, "A successful fallback must clear the cache error.");
             Check.Equal(
-                "Valid after palette normalization (7 pixels): yellow=0, green=0, black=0, red=4, blue=0, unknown=0, continuous=2, edge=0, ambiguous=0, packed=0, blueData=0, legacy=0, alphaUnexpected=0",
+                "Valid after palette normalization (7 pixels): yellow=0, green=0, black=0, red=4, blue=0, unknown=0, continuous=2, edge=0, ambiguous=0, packed=0, blueData=0, external=0, alphaUnexpected=0",
                 result.BuildValidationDescription(),
                 "Normalized validation text must remain exact.");
         }
@@ -331,7 +331,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(1, decoder.CallCount, "Blocked dirty-cache reuse must decode once.");
             Check.Equal(0, validator.CallCount, "A policy-blocked cache is not revalidated.");
             Check.Equal(
-                "Valid: yellow=0, green=0, black=0, red=0, blue=2, unknown=0, continuous=0, edge=0, ambiguous=0, packed=0, blueData=0, legacy=0, alphaUnexpected=0",
+                "Valid: yellow=0, green=0, black=0, red=0, blue=2, unknown=0, continuous=0, edge=0, ambiguous=0, packed=0, blueData=0, external=0, alphaUnexpected=0",
                 defaultResult.BuildValidationDescription(),
                 "Ordinary successful validation text must remain exact.");
 

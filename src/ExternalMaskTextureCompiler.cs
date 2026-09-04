@@ -5,13 +5,13 @@ using UnityEngine;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    internal static class LegacyMaskTextureCompiler
+    internal static class ExternalMaskTextureCompiler
     {
         private static MethodInfo sideloaderGetPng;
 
         public static bool TryCompile(
-            LegacyMaskDescriptor descriptor,
-            out LegacyResolvedMask resolved,
+            ExternalMaskDescriptor descriptor,
+            out ExternalResolvedMask resolved,
             out string error)
         {
             resolved = null;
@@ -26,7 +26,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     MethodInfo getPng = GetSideloaderPngMethod();
                     if (getPng == null)
                     {
-                        error = "Sideloader.GetPng is unavailable for the declared legacy source.";
+                        error = "Sideloader.GetPng is unavailable for the declared external source.";
                         return false;
                     }
 
@@ -58,7 +58,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
                 if (source == null)
                 {
-                    error = "The declared legacy mask texture could not be loaded.";
+                    error = "The declared external mask texture could not be loaded.";
                     return false;
                 }
 
@@ -70,7 +70,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     source.width > PortableMaskFormatLimits.MaximumDimension ||
                     source.height > PortableMaskFormatLimits.MaximumDimension)
                 {
-                    error = "Legacy texture dimensions exceed the supported card-data resolution.";
+                    error = "External texture dimensions exceed the supported card-data resolution.";
                     return false;
                 }
 
@@ -90,7 +90,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 SemanticMask semantic;
                 MaskColorStatistics statistics;
                 BodyMaskPerformanceMetrics.Increment(PerformanceCounter.GradientAnalyses);
-                if (!MaskColorDecoder.TryDecodeLegacyRgbStateCoverage(
+                if (!MaskColorDecoder.TryDecodeExternalRgbStateCoverage(
                         pixels,
                         width,
                         height,
@@ -110,7 +110,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 BodyMaskPerformanceMetrics.Increment(
                     PerformanceCounter.Sha256Calculations);
                 string contentHash = HashPixels(pixels);
-                resolved = new LegacyResolvedMask
+                resolved = new ExternalResolvedMask
                 {
                     Descriptor = descriptor,
                     SemanticMask = semantic,
@@ -124,7 +124,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
             catch (Exception exception)
             {
-                error = "Legacy mask load failed safely: " + exception.Message;
+                error = "External mask load failed safely: " + exception.Message;
                 return false;
             }
             finally

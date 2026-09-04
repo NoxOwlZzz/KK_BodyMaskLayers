@@ -4,7 +4,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
     internal enum PerformanceCounter
     {
-        LegacyIndexScans = 0,
+        ExternalIndexScans = 0,
         MetadataCacheHits = 1,
         MetadataCacheMisses = 2,
         NegativeCacheHits = 3,
@@ -63,7 +63,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
-        public long LegacyIndexScans { get { return this[PerformanceCounter.LegacyIndexScans]; } }
+        public long ExternalIndexScans { get { return this[PerformanceCounter.ExternalIndexScans]; } }
         public long MetadataCacheHits { get { return this[PerformanceCounter.MetadataCacheHits]; } }
         public long MetadataCacheMisses { get { return this[PerformanceCounter.MetadataCacheMisses]; } }
         public long NegativeCacheHits { get { return this[PerformanceCounter.NegativeCacheHits]; } }

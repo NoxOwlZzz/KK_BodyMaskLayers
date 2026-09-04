@@ -46,9 +46,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
                 Rgba32[] pixels = TexturePixelReader.Convert(decoded.GetPixels32());
                 bool accepted;
-                if (sourceContract == MaskSourceContract.NakayRgbStateCoverage)
+                if (sourceContract == MaskSourceContract.ExternalRgbStateCoverage)
                 {
-                    accepted = MaskColorDecoder.TryDecodeLegacyRgbStateCoverage(
+                    accepted = MaskColorDecoder.TryDecodeExternalRgbStateCoverage(
                         pixels,
                         decoded.width,
                         decoded.height,
@@ -74,7 +74,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 BodyMaskPerformanceMetrics.RecordPngDecode(
                     accepted ? semantic : null,
                     sourceContract == MaskSourceContract.Native,
-                    sourceContract == MaskSourceContract.NakayRgbStateCoverage ||
+                    sourceContract == MaskSourceContract.ExternalRgbStateCoverage ||
                     gradientHandlingMode != GradientHandlingMode.StrictCategorical);
                 return accepted;
             }

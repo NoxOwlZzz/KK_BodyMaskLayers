@@ -3,20 +3,20 @@ using System.Collections.Generic;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    public sealed class LegacyClothingMaskCatalog
+    public sealed class ExternalClothingMaskCatalog
     {
         private sealed class ManifestCacheEntry
         {
             public string ChangeKey;
-            public IList<LegacyMaskDescriptor> Descriptors;
+            public IList<ExternalMaskDescriptor> Descriptors;
             public int RejectedEntries;
         }
 
         private readonly Dictionary<string, ManifestCacheEntry> _manifestCache =
             new Dictionary<string, ManifestCacheEntry>(StringComparer.OrdinalIgnoreCase);
         private readonly List<string> _manifestOrder = new List<string>();
-        private readonly Dictionary<string, List<LegacyMaskDescriptor>> _lookup =
-            new Dictionary<string, List<LegacyMaskDescriptor>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<ExternalMaskDescriptor>> _lookup =
+            new Dictionary<string, List<ExternalMaskDescriptor>>(StringComparer.Ordinal);
         private int _generation;
 
         public int Generation
@@ -28,21 +28,21 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         internal int LookupBuildCount { get; private set; }
 
-        public LegacyIndexRefreshResult Refresh(
-            IList<LegacyManifestSource> sources,
-            LegacyResolvedItemIdResolver resolver,
+        public ExternalIndexRefreshResult Refresh(
+            IList<ExternalManifestSource> sources,
+            ExternalResolvedItemIdResolver resolver,
             bool forceFullRescan)
         {
-            sources = sources ?? new LegacyManifestSource[0];
+            sources = sources ?? new ExternalManifestSource[0];
             Dictionary<string, ManifestCacheEntry> next =
                 new Dictionary<string, ManifestCacheEntry>(StringComparer.OrdinalIgnoreCase);
             List<string> nextOrder = new List<string>(sources.Count);
-            LegacyIndexRefreshResult result = new LegacyIndexRefreshResult();
+            ExternalIndexRefreshResult result = new ExternalIndexRefreshResult();
             bool changed = forceFullRescan;
 
             for (int index = 0; index < sources.Count; index++)
             {
-                LegacyManifestSource source = sources[index];
+                ExternalManifestSource source = sources[index];
                 if (source == null)
                 {
                     continue;
@@ -55,7 +55,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 }
 
                 nextOrder.Add(cacheId);
-                string changeKey = LegacyManifestParser.ParserVersion + "|" + source.BuildChangeKey();
+                string changeKey = ExternalManifestParser.ParserVersion + "|" + source.BuildChangeKey();
                 ManifestCacheEntry cached;
                 if (!forceFullRescan &&
                     _manifestCache.TryGetValue(cacheId, out cached) &&
@@ -67,14 +67,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 }
 
                 int rejected;
-                IList<LegacyMaskDescriptor> descriptors;
+                IList<ExternalMaskDescriptor> descriptors;
                 try
                 {
-                    descriptors = LegacyManifestParser.Parse(source, resolver, out rejected);
+                    descriptors = ExternalManifestParser.Parse(source, resolver, out rejected);
                 }
                 catch
                 {
-                    descriptors = new LegacyMaskDescriptor[0];
+                    descriptors = new ExternalMaskDescriptor[0];
                     rejected = 1;
                 }
 
@@ -121,7 +121,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return result;
         }
 
-        public bool TryResolve(LegacyMaskBindingQuery query, out LegacyMaskDescriptor descriptor)
+        public bool TryResolve(ExternalMaskBindingQuery query, out ExternalMaskDescriptor descriptor)
         {
             descriptor = null;
             if (query == null || query.ResolvedItemId <= 0)
@@ -129,16 +129,16 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return false;
             }
 
-            List<LegacyMaskDescriptor> candidates;
+            List<ExternalMaskDescriptor> candidates;
             if (!_lookup.TryGetValue(query.BuildLookupKey(), out candidates))
             {
                 return false;
             }
 
-            LegacyMaskDescriptor fallback = null;
+            ExternalMaskDescriptor fallback = null;
             for (int i = 0; i < candidates.Count; i++)
             {
-                LegacyMaskDescriptor candidate = candidates[i];
+                ExternalMaskDescriptor candidate = candidates[i];
                 bool sharedShoesCategory = candidate.Category == 112 &&
                     (query.Slot == ClothingSlot.IndoorShoes ||
                      query.Slot == ClothingSlot.OutdoorShoes);
@@ -176,9 +176,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return descriptor != null;
         }
 
-        public IList<LegacyMaskDescriptor> GetAllDescriptors()
+        public IList<ExternalMaskDescriptor> GetAllDescriptors()
         {
-            List<LegacyMaskDescriptor> result = new List<LegacyMaskDescriptor>(DescriptorCount);
+            List<ExternalMaskDescriptor> result = new List<ExternalMaskDescriptor>(DescriptorCount);
             for (int orderIndex = 0; orderIndex < _manifestOrder.Count; orderIndex++)
             {
                 ManifestCacheEntry manifest = _manifestCache[_manifestOrder[orderIndex]];
@@ -191,7 +191,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return result;
         }
 
-        private void RebuildLookup(LegacyIndexRefreshResult result)
+        private void RebuildLookup(ExternalIndexRefreshResult result)
         {
             LookupBuildCount++;
             _lookup.Clear();
@@ -202,12 +202,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 result.RejectedEntryCount += manifest.RejectedEntries;
                 for (int i = 0; i < manifest.Descriptors.Count; i++)
                 {
-                    LegacyMaskDescriptor descriptor = manifest.Descriptors[i];
+                    ExternalMaskDescriptor descriptor = manifest.Descriptors[i];
                     string key = descriptor.Category + ":" + descriptor.ResolvedItemId;
-                    List<LegacyMaskDescriptor> bucket;
+                    List<ExternalMaskDescriptor> bucket;
                     if (!_lookup.TryGetValue(key, out bucket))
                     {
-                        bucket = new List<LegacyMaskDescriptor>();
+                        bucket = new List<ExternalMaskDescriptor>();
                         _lookup.Add(key, bucket);
                     }
 
@@ -217,7 +217,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
-        private void PopulateUnchangedResult(LegacyIndexRefreshResult result)
+        private void PopulateUnchangedResult(ExternalIndexRefreshResult result)
         {
             result.Changed = false;
             result.Generation = _generation;
@@ -251,7 +251,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return true;
         }
 
-        private static string BuildCacheId(LegacyManifestSource source, int sourceIndex)
+        private static string BuildCacheId(ExternalManifestSource source, int sourceIndex)
         {
             if (!string.IsNullOrEmpty(source.ArchivePath))
             {

@@ -64,9 +64,9 @@
     <Compile Include="PureLogicTests.cs" />
     <Compile Include="PerformanceInfrastructureTests.cs" />
     <Compile Include="GradientCoverageTests.cs" />
-    <Compile Include="LegacyCatalogTests.cs" />
+    <Compile Include="ExternalCatalogTests.cs" />
     <Compile Include="ArchitectureComponentTests.cs" />
-    <Compile Include="CharacterLegacyMaskSessionTests.cs" />
+    <Compile Include="CharacterExternalMaskSessionTests.cs" />
     <Compile Include="NativeMaskLayerStoreTests.cs" />
     <Compile Include="NativeMaskDecodePipelineTests.cs" />
 
@@ -82,17 +82,17 @@
     <Compile Include="..\src\CompositionScheduler.cs">
       <Link>LinkedSource\CompositionScheduler.cs</Link>
     </Compile>
-    <Compile Include="..\src\LegacyMaskDescriptor.cs">
-      <Link>LinkedSource\LegacyMaskDescriptor.cs</Link>
+    <Compile Include="..\src\ExternalMaskDescriptor.cs">
+      <Link>LinkedSource\ExternalMaskDescriptor.cs</Link>
     </Compile>
-    <Compile Include="..\src\LegacyManifestParser.cs">
-      <Link>LinkedSource\LegacyManifestParser.cs</Link>
+    <Compile Include="..\src\ExternalManifestParser.cs">
+      <Link>LinkedSource\ExternalManifestParser.cs</Link>
     </Compile>
-    <Compile Include="..\src\LegacyClothingMaskCatalog.cs">
-      <Link>LinkedSource\LegacyClothingMaskCatalog.cs</Link>
+    <Compile Include="..\src\ExternalClothingMaskCatalog.cs">
+      <Link>LinkedSource\ExternalClothingMaskCatalog.cs</Link>
     </Compile>
-    <Compile Include="..\src\CharacterLegacyMaskSession.cs">
-      <Link>LinkedSource\CharacterLegacyMaskSession.cs</Link>
+    <Compile Include="..\src\CharacterExternalMaskSession.cs">
+      <Link>LinkedSource\CharacterExternalMaskSession.cs</Link>
     </Compile>
     <Compile Include="..\src\LayerEligibilityEvaluator.cs">
       <Link>LinkedSource\LayerEligibilityEvaluator.cs</Link>
@@ -109,8 +109,8 @@
     <Compile Include="..\src\PersistableLayerSelector.cs">
       <Link>LinkedSource\PersistableLayerSelector.cs</Link>
     </Compile>
-    <Compile Include="..\src\SideloaderLegacyManifestSourceReader.cs">
-      <Link>LinkedSource\SideloaderLegacyManifestSourceReader.cs</Link>
+    <Compile Include="..\src\SideloaderExternalManifestSourceReader.cs">
+      <Link>LinkedSource\SideloaderExternalManifestSourceReader.cs</Link>
     </Compile>
 
     <Compile Include="..\src\Enums.cs">

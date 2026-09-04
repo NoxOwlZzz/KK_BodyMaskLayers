@@ -3,18 +3,18 @@ using System.Collections.Generic;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    internal enum LegacyAutoConversionAttemptDecision
+    internal enum ExternalAutoConversionAttemptDecision
     {
         Granted = 0,
         AlreadyAttempted = 1,
         DeferredUntilNextRefresh = 2
     }
 
-    internal struct LegacyDirtySlotSet
+    internal struct ExternalDirtySlotSet
     {
         private readonly int value;
 
-        internal LegacyDirtySlotSet(int value)
+        internal ExternalDirtySlotSet(int value)
         {
             this.value = value;
         }
@@ -65,58 +65,65 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         }
     }
 
-    internal sealed class CharacterLegacyMaskSession
+    internal sealed class CharacterExternalMaskSession
     {
         private const int SlotCount = (int)ClothingSlot.OutdoorShoes + 1;
-        private const int FirstLegacySlot = (int)ClothingSlot.Bottom;
-        private const int AllLegacySlots = 0x1fe;
+        private const int FirstExternalSlot = (int)ClothingSlot.Bottom;
+        private const int AllExternalSlots = 0x1fe;
 
-        private readonly LegacyResolvedMask[] resolutions =
-            new LegacyResolvedMask[SlotCount];
+        private readonly ExternalResolvedMask[] resolutions =
+            new ExternalResolvedMask[SlotCount];
         private readonly string[] statuses = new string[SlotCount];
         private readonly string[] autoConversionAttemptKeys = new string[SlotCount];
         private readonly string[] clearedAutomaticFingerprints = new string[SlotCount];
-        private int dirtySlots = AllLegacySlots;
+        private int dirtySlots = AllExternalSlots;
         private bool autoConversionAttemptGrantedThisRefresh;
+        private bool convertedDataPersistencePending;
 
         public bool HasDirtySlots
         {
             get { return dirtySlots != 0; }
         }
 
+        // This latch survives refresh resets so a converted layer is not lost after a failed save.
+        public bool ConvertedDataPersistencePending
+        {
+            get { return convertedDataPersistencePending; }
+        }
+
         public void MarkAllDirty()
         {
-            dirtySlots = AllLegacySlots;
+            dirtySlots = AllExternalSlots;
         }
 
         public void MarkSlotDirty(ClothingSlot slot)
         {
             int index = ValidateSlot(slot);
-            if (index >= FirstLegacySlot)
+            if (index >= FirstExternalSlot)
             {
                 dirtySlots |= 1 << index;
             }
         }
 
-        public LegacyDirtySlotSet ConsumeDirtySlots()
+        public ExternalDirtySlotSet ConsumeDirtySlots()
         {
-            LegacyDirtySlotSet result = new LegacyDirtySlotSet(dirtySlots);
+            ExternalDirtySlotSet result = new ExternalDirtySlotSet(dirtySlots);
             dirtySlots = 0;
             return result;
         }
 
         public void DeferSlot(ClothingSlot slot)
         {
-            int index = ValidateLegacySlot(slot);
+            int index = ValidateExternalSlot(slot);
             dirtySlots |= 1 << index;
         }
 
-        public void DeferSlots(LegacyDirtySlotSet slots)
+        public void DeferSlots(ExternalDirtySlotSet slots)
         {
-            dirtySlots |= slots.Value & AllLegacySlots;
+            dirtySlots |= slots.Value & AllExternalSlots;
         }
 
-        public LegacyResolvedMask GetResolution(ClothingSlot slot)
+        public ExternalResolvedMask GetResolution(ClothingSlot slot)
         {
             return resolutions[ValidateSlot(slot)];
         }
@@ -128,11 +135,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public bool SetResolution(
             ClothingSlot slot,
-            LegacyResolvedMask resolution,
+            ExternalResolvedMask resolution,
             string status)
         {
-            int index = ValidateLegacySlot(slot);
-            LegacyResolvedMask previous = resolutions[index];
+            int index = ValidateExternalSlot(slot);
+            ExternalResolvedMask previous = resolutions[index];
             string previousFingerprint = previous == null ? null : previous.Fingerprint;
             string currentFingerprint = resolution == null ? null : resolution.Fingerprint;
             resolutions[index] = resolution;
@@ -146,7 +153,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public bool ClearProviderResolutions(string status)
         {
             bool removed = false;
-            for (int index = FirstLegacySlot; index < SlotCount; index++)
+            for (int index = FirstExternalSlot; index < SlotCount; index++)
             {
                 removed |= resolutions[index] != null;
                 resolutions[index] = null;
@@ -196,11 +203,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             ClothingMaskLayerData layer)
         {
             int index = ValidateSlot(slot);
-            if (index < FirstLegacySlot || layer == null ||
-                layer.SourceContract != MaskSourceContract.NakayRgbStateCoverage ||
+            if (index < FirstExternalSlot || layer == null ||
+                layer.SourceContract != MaskSourceContract.ExternalRgbStateCoverage ||
                 !string.Equals(
                     layer.SourceProviderId,
-                    LegacyMaskDescriptor.ProviderIdValue,
+                    ExternalMaskDescriptor.ProviderIdValue,
                     StringComparison.OrdinalIgnoreCase) ||
                 string.IsNullOrEmpty(layer.SourceFingerprint))
             {
@@ -214,7 +221,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public bool IsFingerprintSuppressed(ClothingSlot slot, string fingerprint)
         {
             int index = ValidateSlot(slot);
-            return index >= FirstLegacySlot &&
+            return index >= FirstExternalSlot &&
                    !string.IsNullOrEmpty(clearedAutomaticFingerprints[index]) &&
                    !string.IsNullOrEmpty(fingerprint) &&
                    string.Equals(
@@ -225,9 +232,19 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public bool IsCurrentResolutionSuppressed(ClothingSlot slot)
         {
-            LegacyResolvedMask resolution = GetResolution(slot);
+            ExternalResolvedMask resolution = GetResolution(slot);
             return resolution != null &&
                    IsFingerprintSuppressed(slot, resolution.Fingerprint);
+        }
+
+        public void MarkConvertedDataPersistencePending()
+        {
+            convertedDataPersistencePending = true;
+        }
+
+        public void CompleteConvertedDataPersistence()
+        {
+            convertedDataPersistencePending = false;
         }
 
         public void BeginAutoConversionRefresh()
@@ -235,28 +252,28 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             autoConversionAttemptGrantedThisRefresh = false;
         }
 
-        public LegacyAutoConversionAttemptDecision TryBeginAutoConversionAttempt(
+        public ExternalAutoConversionAttemptDecision TryBeginAutoConversionAttempt(
             ClothingSlot slot,
             string attemptKey)
         {
-            int index = ValidateLegacySlot(slot);
+            int index = ValidateExternalSlot(slot);
             if (string.Equals(
                 autoConversionAttemptKeys[index],
                 attemptKey,
                 StringComparison.Ordinal))
             {
-                return LegacyAutoConversionAttemptDecision.AlreadyAttempted;
+                return ExternalAutoConversionAttemptDecision.AlreadyAttempted;
             }
 
             if (autoConversionAttemptGrantedThisRefresh)
             {
                 dirtySlots |= 1 << index;
-                return LegacyAutoConversionAttemptDecision.DeferredUntilNextRefresh;
+                return ExternalAutoConversionAttemptDecision.DeferredUntilNextRefresh;
             }
 
             autoConversionAttemptGrantedThisRefresh = true;
             autoConversionAttemptKeys[index] = attemptKey;
-            return LegacyAutoConversionAttemptDecision.Granted;
+            return ExternalAutoConversionAttemptDecision.Granted;
         }
 
         private static int ValidateSlot(ClothingSlot slot)
@@ -270,14 +287,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return index;
         }
 
-        private static int ValidateLegacySlot(ClothingSlot slot)
+        private static int ValidateExternalSlot(ClothingSlot slot)
         {
             int index = ValidateSlot(slot);
-            if (index < FirstLegacySlot)
+            if (index < FirstExternalSlot)
             {
                 throw new ArgumentOutOfRangeException(
                     "slot",
-                    "The top slot is not a direct legacy-mask source.");
+                    "The top slot is not a direct external-mask source.");
             }
 
             return index;

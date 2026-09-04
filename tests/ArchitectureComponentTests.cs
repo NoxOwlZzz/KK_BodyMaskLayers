@@ -31,11 +31,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                     "Native eligibility evaluates inactive reasons in stable order",
                     EligibilityReasonOrderRemainsStable),
                 new TestCase(
-                    "Disabled decoded Nakay layer still owns its matching legacy source",
-                    DisabledNakayLayerStillOwnsMatchingLegacySource),
+                    "Disabled decoded External layer still owns its matching external source",
+                    DisabledExternalLayerStillOwnsMatchingExternalSource),
                 new TestCase(
-                    "Legacy binding query cache identity remains canonical",
-                    LegacyBindingQueryCacheIdentityRemainsCanonical),
+                    "External binding query cache identity remains canonical",
+                    ExternalBindingQueryCacheIdentityRemainsCanonical),
                 new TestCase(
                     "Sideloader manifest CRC remains standard UTF-8 CRC32",
                     SideloaderManifestCrcRemainsStable)
@@ -243,7 +243,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 "inactive: plugin disabled",
                 "inactive: layer disabled",
                 "inactive: invalid or undecoded mask",
-                "inactive: upstream KK_ChaAlphaMask owns the converted legacy source",
+                "inactive: upstream KK_ChaAlphaMask owns the converted external source",
                 "inactive: no runtime clothing object",
                 "inactive: garment is integrated into another slot",
                 "inactive: other shoe type is selected",
@@ -284,9 +284,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 "Layer-disabled must precede a missing decode.");
 
             layer.Enabled = true;
-            layer.SourceContract = MaskSourceContract.NakayRgbStateCoverage;
-            layer.SourceProviderId = LegacyMaskDescriptor.ProviderIdValue;
-            context.LegacyPluginInstalled = true;
+            layer.SourceContract = MaskSourceContract.ExternalRgbStateCoverage;
+            layer.SourceProviderId = ExternalMaskDescriptor.ProviderIdValue;
+            context.ExternalPluginInstalled = true;
             context.AvailabilityMask = 0;
             Check.Equal(
                 NativeLayerInactiveReason.MissingDecodedMask,
@@ -299,7 +299,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
 
             layer.SourceContract = MaskSourceContract.Native;
             layer.SourceProviderId = null;
-            context.LegacyPluginInstalled = false;
+            context.ExternalPluginInstalled = false;
             context.StructuralFlags = 1;
             Check.Equal(
                 NativeLayerInactiveReason.MissingRuntimeObject,
@@ -335,14 +335,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 "A fully eligible layer must report no inactive reason.");
         }
 
-        private static void DisabledNakayLayerStillOwnsMatchingLegacySource()
+        private static void DisabledExternalLayerStillOwnsMatchingExternalSource()
         {
-            const string fingerprint = "legacy-source-fingerprint";
+            const string fingerprint = "external-source-fingerprint";
             ClothingItemIdentity identity = CreateIdentity(ClothingSlot.Gloves, 303);
             ClothingMaskLayerData layer = CreateLayer(identity);
             layer.Enabled = false;
-            layer.SourceContract = MaskSourceContract.NakayRgbStateCoverage;
-            layer.SourceProviderId = LegacyMaskDescriptor.ProviderIdValue;
+            layer.SourceContract = MaskSourceContract.ExternalRgbStateCoverage;
+            layer.SourceProviderId = ExternalMaskDescriptor.ProviderIdValue;
             layer.SourceFingerprint = fingerprint;
             NativeLayerEligibilityContext context = CreateContext(identity);
 
@@ -351,42 +351,42 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 LayerEligibilityEvaluator.EvaluateNative(layer, true, context),
                 "A disabled converted layer must remain inactive as a native contribution.");
             Check.True(
-                LayerEligibilityEvaluator.NativeOwnsLegacySource(
+                LayerEligibilityEvaluator.NativeOwnsExternalSource(
                     layer,
                     true,
                     context,
                     fingerprint),
-                "A decoded and correctly bound Nakay copy must suppress its identical legacy source even while disabled.");
+                "A decoded and correctly bound External copy must suppress its identical external source even while disabled.");
 
             context.CurrentIdentity = CreateIdentity(ClothingSlot.Gloves, 404);
             Check.False(
-                LayerEligibilityEvaluator.NativeOwnsLegacySource(
+                LayerEligibilityEvaluator.NativeOwnsExternalSource(
                     layer,
                     true,
                     context,
                     fingerprint),
-                "An identical Nakay fingerprint must not suppress legacy data for a different current item.");
+                "An identical External fingerprint must not suppress external data for a different current item.");
             context.CurrentIdentity = identity.DeepClone();
 
             Check.False(
-                LayerEligibilityEvaluator.NativeOwnsLegacySource(
+                LayerEligibilityEvaluator.NativeOwnsExternalSource(
                     layer,
                     true,
                     context,
                     "different-fingerprint"),
-                "A disabled Nakay copy must not suppress a different legacy source.");
+                "A disabled External copy must not suppress a different external source.");
             Check.False(
-                LayerEligibilityEvaluator.NativeOwnsLegacySource(
+                LayerEligibilityEvaluator.NativeOwnsExternalSource(
                     layer,
                     false,
                     context,
                     fingerprint),
-                "A converted layer without a decoded mask cannot own the legacy source.");
+                "A converted layer without a decoded mask cannot own the external source.");
         }
 
-        private static void LegacyBindingQueryCacheIdentityRemainsCanonical()
+        private static void ExternalBindingQueryCacheIdentityRemainsCanonical()
         {
-            LegacyMaskBindingQuery query = new LegacyMaskBindingQuery
+            ExternalMaskBindingQuery query = new ExternalMaskBindingQuery
             {
                 Slot = ClothingSlot.Bra,
                 Category = 5,
@@ -418,11 +418,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
         {
             Check.Equal(
                 0u,
-                SideloaderLegacyManifestSourceReader.ComputeCrc32(null),
+                SideloaderExternalManifestSourceReader.ComputeCrc32(null),
                 "Null manifest text must retain the empty UTF-8 CRC32 value.");
             Check.Equal(
                 0xcbf43926u,
-                SideloaderLegacyManifestSourceReader.ComputeCrc32("123456789"),
+                SideloaderExternalManifestSourceReader.ComputeCrc32("123456789"),
                 "Manifest CRC must use the standard reflected CRC32 polynomial over UTF-8.");
         }
 
@@ -470,7 +470,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             {
                 SlotIndex = (int)identity.Slot,
                 PluginEnabled = true,
-                LegacyPluginInstalled = false,
+                ExternalPluginInstalled = false,
                 ShoesType = 0,
                 AvailabilityMask = 1 << (int)identity.Slot,
                 StructuralFlags = 0,

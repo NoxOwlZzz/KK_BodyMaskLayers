@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    internal static class LegacyCharacterStateAdapter
+    internal static class ExternalCharacterStateAdapter
     {
         private static MethodInfo forceHighPolyIsHiPoly;
         private static bool forceHighPolyLookupComplete;
@@ -58,7 +58,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public static bool TryBuildBindingQuery(
             ChaControl character,
             ClothingSlot slot,
-            out LegacyMaskBindingQuery query)
+            out ExternalMaskBindingQuery query)
         {
             query = null;
             ClothingSlot identitySlot = slot;
@@ -91,7 +91,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             bool? option01;
             bool? option02;
             ReadDrawOptions(character, slot, out option01, out option02);
-            query = new LegacyMaskBindingQuery
+            query = new ExternalMaskBindingQuery
             {
                 Slot = slot,
                 Category = category,
@@ -173,7 +173,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             catch (Exception exception)
             {
                 BodyMaskLayersPlugin.LogDebug(
-                    "Legacy draw-option lookup failed: " + exception.Message);
+                    "External draw-option lookup failed: " + exception.Message);
                 option01 = null;
                 option02 = null;
             }

@@ -46,7 +46,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
         {
             PerformanceCounters counters = new PerformanceCounters();
             counters.Enabled = true;
-            counters.Increment(PerformanceCounter.LegacyIndexScans);
+            counters.Increment(PerformanceCounter.ExternalIndexScans);
             counters.Add(PerformanceCounter.FileReads, 2L);
             counters.SetCacheMemoryBytes(100L);
             PerformanceSnapshot baseline = counters.Capture();
@@ -58,13 +58,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
 
             PerformanceSnapshot current = counters.Capture();
             PerformanceSnapshot delta = current.Delta(baseline);
-            Check.Equal(1L, baseline.LegacyIndexScans, "The baseline must remain immutable.");
+            Check.Equal(1L, baseline.ExternalIndexScans, "The baseline must remain immutable.");
             Check.Equal(2L, baseline.FileReads, "The baseline must preserve the captured value.");
             Check.Equal(3L, delta.FileReads, "Delta must contain only later file reads.");
             Check.Equal(1L, delta.Compositions, "Delta must include compositions.");
             Check.Equal(1L, delta.StateFastPathHits, "Delta must include fast-path hits.");
             Check.Equal(-25L, delta.CacheMemoryBytes, "Gauge deltas may be negative.");
-            Check.Equal(0L, delta.LegacyIndexScans, "Unchanged counters must have a zero delta.");
+            Check.Equal(0L, delta.ExternalIndexScans, "Unchanged counters must have a zero delta.");
         }
 
         private static void SharedMetricsOwnRuntimeCounters()
@@ -123,7 +123,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 string summary = BodyMaskPerformanceMetrics.BuildSummary();
                 Check.True(
                     summary.StartsWith(
-                        "Legacy performance counters enabled=True",
+                        "External performance counters enabled=True",
                         StringComparison.Ordinal),
                     "The diagnostic summary prefix must remain compatible.");
                 Check.True(summary.IndexOf("; DirtyRequests=", StringComparison.Ordinal) >= 0,
@@ -240,6 +240,26 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(3L, snapshot.DirtyRequests, "Dirty request diagnostics must match the scheduler.");
             Check.Equal(1L, snapshot.DirtyRequestsCoalesced, "Coalesced diagnostics must match the scheduler.");
             Check.Equal(2L, snapshot.Compositions, "Composition diagnostics must match successful scheduling.");
+
+            scheduler.RequestDirty(CompositionDirtyReason.ItemChanged);
+            Check.True(
+                scheduler.TryBeginComposition(52, out reasons),
+                "A requested rebuild must begin normally.");
+            scheduler.RequestDirty(CompositionDirtyReason.ClothingStateChanged);
+            scheduler.RestoreDirty(reasons);
+            Check.True(scheduler.IsDirty, "A failed rebuild must restore its dirty reason.");
+            Check.False(
+                scheduler.TryBeginComposition(52, out reasons),
+                "A restored rebuild must still respect the same-frame guard.");
+            Check.True(
+                scheduler.TryBeginComposition(53, out reasons),
+                "A restored rebuild must retry on the next frame.");
+            Check.True(
+                (reasons & (CompositionDirtyReason.ItemChanged |
+                            CompositionDirtyReason.ClothingStateChanged)) ==
+                (CompositionDirtyReason.ItemChanged |
+                 CompositionDirtyReason.ClothingStateChanged),
+                "Retry must preserve both the consumed and newly requested dirty reasons.");
         }
 
         private static void RuntimeTrackerComparesEffectivePlanes()
@@ -313,7 +333,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             Check.Equal(0L, idleDelta.AssetBundleOpens, "Idle must add no AssetBundle opens.");
             Check.Equal(0L, idleDelta.SourceLoads, "Idle must add no source loads.");
             Check.Equal(0L, idleDelta.ProviderResolutions, "Idle must add no provider resolutions.");
-            Check.Equal(0L, idleDelta.LegacyIndexScans, "Idle must add no legacy index scans.");
+            Check.Equal(0L, idleDelta.ExternalIndexScans, "Idle must add no external index scans.");
             Check.Equal(0L, idleDelta.ManifestParses, "Idle must add no manifest parses.");
             Check.Equal(0L, idleDelta.GlobalSideloaderScans, "Idle must add no global Sideloader scans.");
             Check.Equal(0L, idleDelta.AssetBundleLoads, "Idle must add no AssetBundle loads.");

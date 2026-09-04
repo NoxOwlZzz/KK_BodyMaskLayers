@@ -84,7 +84,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             bool conservativeUnknown =
                 unknownColorPolicy == UnknownColorPolicy.HideWhenNotOff &&
                 (statistics.UnknownPixels != 0 || statistics.BluePixels != 0);
-            if (statistics.ContinuousPixels != 0 || statistics.LegacyStatePixels != 0)
+            if (statistics.ContinuousPixels != 0 || statistics.ExternalStatePixels != 0)
             {
                 return true;
             }

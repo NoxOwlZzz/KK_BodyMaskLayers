@@ -7,9 +7,9 @@ using System.Xml;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    internal static class SideloaderLegacyManifestSourceReader
+    internal static class SideloaderExternalManifestSourceReader
     {
-        public static IList<LegacyManifestSource> Read()
+        public static IList<ExternalManifestSource> Read()
         {
             BodyMaskPerformanceMetrics.Increment(
                 PerformanceCounter.GlobalSideloaderScans);
@@ -18,7 +18,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 false);
             if (sideloaderType == null)
             {
-                return new LegacyManifestSource[0];
+                return new ExternalManifestSource[0];
             }
 
             FieldInfo manifestsField = sideloaderType.GetField(
@@ -29,7 +29,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 : manifestsField.GetValue(null) as IDictionary;
             if (manifests == null)
             {
-                return new LegacyManifestSource[0];
+                return new ExternalManifestSource[0];
             }
 
             IDictionary archives = null;
@@ -41,8 +41,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 archives = archivesField.GetValue(null) as IDictionary;
             }
 
-            List<LegacyManifestSource> result =
-                new List<LegacyManifestSource>(manifests.Count);
+            List<ExternalManifestSource> result =
+                new List<ExternalManifestSource>(manifests.Count);
             foreach (DictionaryEntry entry in manifests)
             {
                 object manifest = entry.Value;
@@ -89,7 +89,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 FileInfo archive = !string.IsNullOrEmpty(archivePath)
                     ? new FileInfo(archivePath)
                     : null;
-                result.Add(new LegacyManifestSource
+                result.Add(new ExternalManifestSource
                 {
                     ModGuid = guid,
                     ArchivePath = archivePath,
@@ -102,7 +102,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 });
             }
 
-            result.Sort(delegate(LegacyManifestSource left, LegacyManifestSource right)
+            result.Sort(delegate(ExternalManifestSource left, ExternalManifestSource right)
             {
                 return string.Compare(
                     left.ArchivePath ?? left.ModGuid,

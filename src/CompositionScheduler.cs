@@ -14,7 +14,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         NativeLayerChanged = 1 << 5,
         MaterialTargetChanged = 1 << 6,
         IndexChanged = 1 << 7,
-        PreviewRequested = 1 << 8,
         NativeConversion = 1 << 9
     }
 
@@ -42,11 +41,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public bool IsDirty
         {
             get { return dirty; }
-        }
-
-        public CompositionDirtyReason PendingReasons
-        {
-            get { return pendingReasons; }
         }
 
         public long RequestCount

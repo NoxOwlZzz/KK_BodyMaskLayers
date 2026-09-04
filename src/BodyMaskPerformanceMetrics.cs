@@ -25,7 +25,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         {
             PerformanceSnapshot snapshot = Store.Capture();
             StringBuilder builder = new StringBuilder(512);
-            builder.Append("Legacy performance counters enabled=").Append(Store.Enabled);
+            builder.Append("External performance counters enabled=").Append(Store.Enabled);
             for (int value = 0; value < (int)PerformanceCounter.CounterCount; value++)
             {
                 PerformanceCounter counter = (PerformanceCounter)value;

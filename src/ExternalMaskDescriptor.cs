@@ -3,8 +3,9 @@ using System.Text;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    public sealed class LegacyMaskDescriptor
+    public sealed class ExternalMaskDescriptor
     {
+        // These values are persisted source-contract identifiers and must remain stable.
         public const string ProviderIdValue = "nakay.kk.ChaAlphaMask";
         public const string ContractVersionValue = "nakay-rgb-state-selector-v1";
 
@@ -58,9 +59,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return HashUtility.Sha256(Encoding.UTF8.GetBytes(canonical));
         }
 
-        public LegacyMaskDescriptor CloneForSlot(ClothingSlot slot)
+        public ExternalMaskDescriptor CloneForSlot(ClothingSlot slot)
         {
-            LegacyMaskDescriptor clone = (LegacyMaskDescriptor)MemberwiseClone();
+            ExternalMaskDescriptor clone = (ExternalMaskDescriptor)MemberwiseClone();
             clone.Slot = slot;
             return clone;
         }
@@ -82,7 +83,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         }
     }
 
-    public sealed class LegacyMaskBindingQuery
+    public sealed class ExternalMaskBindingQuery
     {
         public ClothingSlot Slot;
         public int Category;
@@ -112,7 +113,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         }
     }
 
-    public sealed class LegacyManifestSource
+    public sealed class ExternalManifestSource
     {
         public string ModGuid;
         public string ArchivePath;
@@ -135,7 +136,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         }
     }
 
-    public sealed class LegacyIndexRefreshResult
+    public sealed class ExternalIndexRefreshResult
     {
         public bool Changed;
         public int Generation;
@@ -146,56 +147,49 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public int RejectedEntryCount;
     }
 
-    public static class LegacyCompatibilityPolicy
+    public static class ExternalCompatibilityPolicy
     {
-        public static bool ShouldUseDirectProvider(
-            bool compatibilityEnabled,
-            bool oldPluginInstalled)
-        {
-            return compatibilityEnabled && !oldPluginInstalled;
-        }
-
-        public static bool NativeFingerprintSuppressesLegacy(
+        public static bool NativeFingerprintSuppressesExternal(
             string nativeFingerprint,
             bool nativeOwnsSource,
-            string legacyFingerprint)
+            string externalFingerprint)
         {
             return nativeOwnsSource && !string.IsNullOrEmpty(nativeFingerprint) &&
-                   !string.IsNullOrEmpty(legacyFingerprint) &&
+                   !string.IsNullOrEmpty(externalFingerprint) &&
                    string.Equals(
                        nativeFingerprint,
-                       legacyFingerprint,
+                       externalFingerprint,
                        StringComparison.Ordinal);
         }
 
-        public static bool NativeLayerOwnsLegacySource(
+        public static bool NativeLayerOwnsExternalSource(
             ClothingMaskLayerData nativeLayer,
             bool decodedMaskAvailable,
             bool bindingMatches,
-            string legacyFingerprint)
+            string externalFingerprint)
         {
             return nativeLayer != null && decodedMaskAvailable && bindingMatches &&
-                   nativeLayer.SourceContract == MaskSourceContract.NakayRgbStateCoverage &&
+                   nativeLayer.SourceContract == MaskSourceContract.ExternalRgbStateCoverage &&
                    string.Equals(
                        nativeLayer.SourceProviderId,
-                       LegacyMaskDescriptor.ProviderIdValue,
+                       ExternalMaskDescriptor.ProviderIdValue,
                        StringComparison.OrdinalIgnoreCase) &&
-                   NativeFingerprintSuppressesLegacy(
+                   NativeFingerprintSuppressesExternal(
                        nativeLayer.SourceFingerprint,
                        true,
-                       legacyFingerprint);
+                       externalFingerprint);
         }
 
         public static bool UpstreamPluginSuppressesConvertedNative(
-            bool oldPluginInstalled,
+            bool sourceProviderInstalled,
             MaskSourceContract sourceContract,
             string sourceProviderId)
         {
-            return oldPluginInstalled &&
-                   sourceContract == MaskSourceContract.NakayRgbStateCoverage &&
+            return sourceProviderInstalled &&
+                   sourceContract == MaskSourceContract.ExternalRgbStateCoverage &&
                    string.Equals(
                        sourceProviderId,
-                       LegacyMaskDescriptor.ProviderIdValue,
+                       ExternalMaskDescriptor.ProviderIdValue,
                        StringComparison.OrdinalIgnoreCase);
         }
     }

@@ -7,7 +7,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
     public static class CardDataSerializer
     {
-        public const int LegacySchemaVersion = 1;
+        public const int Schema1Version = 1;
         public const int SchemaVersion = 2;
         public const int MaximumLayerCount = 9;
         public const int MaximumStringBytes = 4096;
@@ -16,6 +16,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public const int MaximumSerializedLayerBytes =
             PortableMaskFormatLimits.MaximumPngBytes + (64 * 1024);
 
+        // The format identifier remains stable; the following integer selects the schema reader.
         private static readonly byte[] Magic = { (byte)'B', (byte)'M', (byte)'L', (byte)'1' };
         private static readonly Encoding Utf8 = new UTF8Encoding(false, true);
 
@@ -84,7 +85,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     }
 
                     int schemaVersion = reader.ReadInt32();
-                    if (schemaVersion != LegacySchemaVersion && schemaVersion != SchemaVersion)
+                    if (schemaVersion != Schema1Version && schemaVersion != SchemaVersion)
                     {
                         error = "Unsupported BodyMask Layers schema version " + schemaVersion + ".";
                         return false;
@@ -99,8 +100,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
                     for (int i = 0; i < count; i++)
                     {
-                        ClothingMaskLayerData layer = schemaVersion == LegacySchemaVersion
-                            ? ReadLegacyLayer(reader)
+                        ClothingMaskLayerData layer = schemaVersion == Schema1Version
+                            ? ReadSchema1Layer(reader)
                             : ReadLayerRecord(reader);
                         int slot = (int)layer.Slot;
                         if (slot < 0 || slot >= MaximumLayerCount)
@@ -314,7 +315,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return layer;
         }
 
-        private static ClothingMaskLayerData ReadLegacyLayer(BinaryReader reader)
+        private static ClothingMaskLayerData ReadSchema1Layer(BinaryReader reader)
         {
             ClothingMaskLayerData layer = new ClothingMaskLayerData();
             layer.Slot = (ClothingSlot)reader.ReadInt32();
@@ -327,9 +328,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 layer.OptionalStatePolicy = (UnknownStatePolicy)reader.ReadInt32();
             }
 
-            layer.Hash = ReadLegacyString(reader);
-            layer.CreatedWithPluginVersion = ReadLegacyString(reader);
-            layer.LastValidationResult = ReadLegacyString(reader);
+            layer.Hash = ReadSchema1String(reader);
+            layer.CreatedWithPluginVersion = ReadSchema1String(reader);
+            layer.LastValidationResult = ReadSchema1String(reader);
             if (reader.ReadBoolean())
             {
                 ClothingItemIdentity identity = new ClothingItemIdentity();
@@ -337,8 +338,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 identity.Category = reader.ReadInt32();
                 identity.LocalItemId = reader.ReadInt32();
                 identity.OriginalItemId = reader.ReadInt32();
-                identity.SideloaderGuid = ReadLegacyString(reader);
-                identity.DisplayName = ReadLegacyString(reader);
+                identity.SideloaderGuid = ReadSchema1String(reader);
+                identity.DisplayName = ReadSchema1String(reader);
                 layer.BoundItemIdentity = identity;
             }
 
@@ -360,7 +361,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             layer.SourceProviderId = null;
             layer.SourceFingerprint = null;
             layer.SourceAsset = null;
-            ValidateLegacyLayerAfterRead(layer);
+            ValidateSchema1LayerAfterRead(layer);
             return layer;
         }
 
@@ -444,7 +445,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
-        private static void ValidateLegacyLayerAfterRead(ClothingMaskLayerData layer)
+        private static void ValidateSchema1LayerAfterRead(ClothingMaskLayerData layer)
         {
             if (!IsValidSlot((int)layer.Slot))
             {
@@ -522,7 +523,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return Utf8.GetString(bytes);
         }
 
-        private static string ReadLegacyString(BinaryReader reader)
+        private static string ReadSchema1String(BinaryReader reader)
         {
             int length = reader.ReadInt32();
             if (length == -1)
@@ -598,7 +599,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         private static bool IsValidSourceContract(int value)
         {
             return value == (int)MaskSourceContract.Native ||
-                   value == (int)MaskSourceContract.NakayRgbStateCoverage;
+                   value == (int)MaskSourceContract.ExternalRgbStateCoverage;
         }
 
         private static bool IsValidGradientHandlingMode(int value)

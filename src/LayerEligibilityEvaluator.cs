@@ -19,7 +19,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public NativeLayerEligibilityContext(
             int slotIndex,
             bool pluginEnabled,
-            bool legacyPluginInstalled,
+            bool externalPluginInstalled,
             int shoesType,
             int availabilityMask,
             int structuralFlags,
@@ -27,7 +27,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         {
             SlotIndex = slotIndex;
             PluginEnabled = pluginEnabled;
-            LegacyPluginInstalled = legacyPluginInstalled;
+            ExternalPluginInstalled = externalPluginInstalled;
             ShoesType = shoesType;
             AvailabilityMask = availabilityMask;
             StructuralFlags = structuralFlags;
@@ -36,7 +36,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public int SlotIndex;
         public bool PluginEnabled;
-        public bool LegacyPluginInstalled;
+        public bool ExternalPluginInstalled;
         public int ShoesType;
         public int AvailabilityMask;
         public int StructuralFlags;
@@ -86,8 +86,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return NativeLayerInactiveReason.MissingDecodedMask;
             }
 
-            if (LegacyCompatibilityPolicy.UpstreamPluginSuppressesConvertedNative(
-                    context.LegacyPluginInstalled,
+            if (ExternalCompatibilityPolicy.UpstreamPluginSuppressesConvertedNative(
+                    context.ExternalPluginInstalled,
                     layer.SourceContract,
                     layer.SourceProviderId))
             {
@@ -127,23 +127,23 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 : NativeLayerInactiveReason.None;
         }
 
-        public static bool NativeOwnsLegacySource(
+        public static bool NativeOwnsExternalSource(
             ClothingMaskLayerData nativeLayer,
             bool decodedMaskAvailable,
             NativeLayerEligibilityContext context,
-            string legacyFingerprint)
+            string externalFingerprint)
         {
-            return CanNativeOwnLegacySourceWithoutCurrentIdentity(
+            return CanNativeOwnExternalSourceWithoutCurrentIdentity(
                        nativeLayer,
                        decodedMaskAvailable,
                        context) &&
-                   NativeOwnsLegacySourceAfterPrecheck(
+                   NativeOwnsExternalSourceAfterPrecheck(
                        nativeLayer,
                        context.CurrentIdentity,
-                       legacyFingerprint);
+                       externalFingerprint);
         }
 
-        public static bool CanNativeOwnLegacySourceWithoutCurrentIdentity(
+        public static bool CanNativeOwnExternalSourceWithoutCurrentIdentity(
             ClothingMaskLayerData nativeLayer,
             bool decodedMaskAvailable,
             NativeLayerEligibilityContext context)
@@ -160,18 +160,18 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return true;
         }
 
-        public static bool NativeOwnsLegacySourceAfterPrecheck(
+        public static bool NativeOwnsExternalSourceAfterPrecheck(
             ClothingMaskLayerData nativeLayer,
             ClothingItemIdentity currentIdentity,
-            string legacyFingerprint)
+            string externalFingerprint)
         {
             bool bindingMatches = nativeLayer.BoundItemIdentity.Matches(
                 currentIdentity);
-            return LegacyCompatibilityPolicy.NativeLayerOwnsLegacySource(
+            return ExternalCompatibilityPolicy.NativeLayerOwnsExternalSource(
                 nativeLayer,
                 true,
                 bindingMatches,
-                legacyFingerprint);
+                externalFingerprint);
         }
 
         public static bool IsSelectedShoe(int slotIndex, int shoesType)
@@ -200,7 +200,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 case NativeLayerInactiveReason.MissingDecodedMask:
                     return "inactive: invalid or undecoded mask";
                 case NativeLayerInactiveReason.UpstreamPluginOwnsSource:
-                    return "inactive: upstream KK_ChaAlphaMask owns the converted legacy source";
+                    return "inactive: upstream KK_ChaAlphaMask owns the converted external source";
                 case NativeLayerInactiveReason.MissingRuntimeObject:
                     return "inactive: no runtime clothing object";
                 case NativeLayerInactiveReason.StructurallySuppressed:

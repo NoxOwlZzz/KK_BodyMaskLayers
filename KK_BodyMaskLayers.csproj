@@ -84,10 +84,6 @@
       <HintPath>lib\UnityEngine.UI.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="TextMeshPro-1.0.55.56.0b12">
-      <HintPath>lib\TextMeshPro-1.0.55.56.0b12.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\AssemblyInfo.cs" />
@@ -101,8 +97,8 @@
     <Compile Include="src\CardDataSerializer.cs" />
     <Compile Include="src\CharacterBodyMaskMaterialTarget.cs" />
     <Compile Include="src\CharacterClothingRuntime.cs" />
-    <Compile Include="src\CharacterLegacyMaskSession.cs" />
-    <Compile Include="src\CharacterLegacyMaskCoordinator.cs" />
+    <Compile Include="src\CharacterExternalMaskSession.cs" />
+    <Compile Include="src\CharacterExternalMaskCoordinator.cs" />
     <Compile Include="src\CharacterMaskCompositionEngine.cs" />
     <Compile Include="src\CharacterMaskDiagnostics.cs" />
     <Compile Include="src\CharacterMaskPersistence.cs" />
@@ -117,13 +113,13 @@
     <Compile Include="src\CoordinateDataHandler.cs" />
     <Compile Include="src\Diagnostics.cs" />
     <Compile Include="src\Enums.cs" />
-    <Compile Include="src\LegacyClothingMaskCatalog.cs" />
-    <Compile Include="src\LegacyCharacterStateAdapter.cs" />
-    <Compile Include="src\LegacyManifestParser.cs" />
-    <Compile Include="src\LegacyMaskDescriptor.cs" />
-    <Compile Include="src\LegacyMaskTextureCompiler.cs" />
-    <Compile Include="src\LegacyPortableLayerConverter.cs" />
-    <Compile Include="src\LegacyResolvedMask.cs" />
+    <Compile Include="src\ExternalClothingMaskCatalog.cs" />
+    <Compile Include="src\ExternalCharacterStateAdapter.cs" />
+    <Compile Include="src\ExternalManifestParser.cs" />
+    <Compile Include="src\ExternalMaskDescriptor.cs" />
+    <Compile Include="src\ExternalMaskTextureCompiler.cs" />
+    <Compile Include="src\ExternalPortableLayerConverter.cs" />
+    <Compile Include="src\ExternalResolvedMask.cs" />
     <Compile Include="src\LayerEligibilityEvaluator.cs" />
     <Compile Include="src\MakerInterface.cs" />
     <Compile Include="src\MaskColorDecoder.cs" />
@@ -133,7 +129,7 @@
     <Compile Include="src\MaskPngDecodeService.cs" />
     <Compile Include="src\MaskPreviewBuilder.cs" />
     <Compile Include="src\MaskResolutionConverter.cs" />
-    <Compile Include="src\NakayChaAlphaMaskProvider.cs" />
+    <Compile Include="src\ExternalMaskProvider.cs" />
     <Compile Include="src\NativeMaskDecodePipeline.cs" />
     <Compile Include="src\NativeMaskLayerStore.cs" />
     <Compile Include="src\Plugin.cs" />
@@ -146,7 +142,7 @@
     <Compile Include="src\OutfitPayloadRouter.cs" />
     <Compile Include="src\Rgba32.cs" />
     <Compile Include="src\SemanticMask.cs" />
-    <Compile Include="src\SideloaderLegacyManifestSourceReader.cs" />
+    <Compile Include="src\SideloaderExternalManifestSourceReader.cs" />
     <Compile Include="src\TexturePixelReader.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -75,16 +75,16 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public void Poll(
             ChaControl character,
             NativeMaskLayerStore nativeLayers,
-            CharacterLegacyMaskSession legacySession)
+            CharacterExternalMaskSession externalSession)
         {
             if (nativeLayers == null)
             {
                 throw new ArgumentNullException("nativeLayers");
             }
 
-            if (legacySession == null)
+            if (externalSession == null)
             {
-                throw new ArgumentNullException("legacySession");
+                throw new ArgumentNullException("externalSession");
             }
 
             bool runtimeChanged = false;
@@ -96,8 +96,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 shoesType = currentShoesType;
                 dirtySink.RequestRuntimeDirty("active shoe type change", false);
                 runtimeChanged = true;
-                legacySession.MarkSlotDirty(ClothingSlot.IndoorShoes);
-                legacySession.MarkSlotDirty(ClothingSlot.OutdoorShoes);
+                externalSession.MarkSlotDirty(ClothingSlot.IndoorShoes);
+                externalSession.MarkSlotDirty(ClothingSlot.OutdoorShoes);
             }
 
             int currentAvailabilityMask = 0;
@@ -125,13 +125,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 structuralFlags = currentStructuralFlags;
                 dirtySink.RequestRuntimeDirty("integrated garment structure change", false);
                 runtimeChanged = true;
-                legacySession.MarkSlotDirty(ClothingSlot.Bottom);
-                legacySession.MarkSlotDirty(ClothingSlot.Bra);
-                legacySession.MarkSlotDirty(ClothingSlot.Shorts);
+                externalSession.MarkSlotDirty(ClothingSlot.Bottom);
+                externalSession.MarkSlotDirty(ClothingSlot.Bra);
+                externalSession.MarkSlotDirty(ClothingSlot.Shorts);
             }
 
-            bool directLegacyCompatibility =
-                NakayChaAlphaMaskProvider.DirectCompatibilityActive;
+            bool directExternalCompatibility =
+                ExternalMaskProvider.DirectCompatibilityActive;
             for (int index = 0; index < ClothingSlotRegistry.SlotCount; index++)
             {
                 byte raw = ReadRawState(character, index);
@@ -145,7 +145,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                         previousRaw,
                         raw,
                         nativeLayers,
-                        legacySession);
+                        externalSession);
                     if (resolved != GarmentState.Unknown)
                     {
                         lastKnownStates[index] = resolved;
@@ -188,21 +188,21 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     currentIdentities[index] = ClothingItemIdentityResolver.Resolve(
                         character,
                         (ClothingSlot)index);
-                    legacySession.MarkSlotDirty((ClothingSlot)index);
+                    externalSession.MarkSlotDirty((ClothingSlot)index);
                     dirtySink.RequestRuntimeDirty("clothing item change", true);
                     runtimeChanged = true;
                 }
 
-                if (index > 0 && directLegacyCompatibility)
+                if (index > 0 && directExternalCompatibility)
                 {
                     int drawOptionSignature =
-                        LegacyCharacterStateAdapter.GetDrawOptionSignature(
+                        ExternalCharacterStateAdapter.GetDrawOptionSignature(
                             character,
                             (ClothingSlot)index);
                     if (observedDrawOptionSignatures[index] != drawOptionSignature)
                     {
                         observedDrawOptionSignatures[index] = drawOptionSignature;
-                        legacySession.MarkSlotDirty((ClothingSlot)index);
+                        externalSession.MarkSlotDirty((ClothingSlot)index);
                         runtimeChanged = true;
                     }
                 }
@@ -225,7 +225,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             ChaControl character,
             int clothingIndex,
             NativeMaskLayerStore nativeLayers,
-            CharacterLegacyMaskSession legacySession)
+            CharacterExternalMaskSession externalSession)
         {
             byte current = ReadRawState(character, clothingIndex);
             byte previous = observedRawStates[clothingIndex];
@@ -235,7 +235,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                        previous,
                        current,
                        nativeLayers,
-                       legacySession);
+                       externalSession);
         }
 
         public void InvalidateItem(ClothingSlot slot)
@@ -321,7 +321,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return new NativeLayerEligibilityContext(
                 index,
                 pluginEnabled,
-                NakayChaAlphaMaskProvider.IsLegacyPluginInstalled,
+                ExternalMaskProvider.IsSourceProviderInstalled,
                 shoesType,
                 availabilityMask,
                 structuralFlags,
@@ -340,7 +340,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             byte previousRaw,
             byte currentRaw,
             NativeMaskLayerStore nativeLayers,
-            CharacterLegacyMaskSession legacySession)
+            CharacterExternalMaskSession externalSession)
         {
             if (previousRaw == currentRaw)
             {
@@ -366,10 +366,10 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 }
             }
 
-            LegacyResolvedMask legacy =
-                legacySession.GetResolution((ClothingSlot)index);
-            return legacy == null || legacy.SemanticMask == null ||
-                   legacy.SemanticMask.AreStatePlanesEquivalent(previousRaw, currentRaw);
+            ExternalResolvedMask external =
+                externalSession.GetResolution((ClothingSlot)index);
+            return external == null || external.SemanticMask == null ||
+                   external.SemanticMask.AreStatePlanesEquivalent(previousRaw, currentRaw);
         }
 
         private bool CanWriteStateLog()

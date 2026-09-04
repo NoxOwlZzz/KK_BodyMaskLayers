@@ -11,12 +11,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public ConfigEntry<UnknownColorPolicy> UnknownColorPolicy;
         public ConfigEntry<GradientHandlingMode> GradientHandling;
         public ConfigEntry<UnknownStatePolicy> UnknownStatePolicy;
-        public ConfigEntry<bool> AllowUnauditedChaAlphaMask;
-        public ConfigEntry<bool> EnableNakayLegacyCompatibility;
-        public ConfigEntry<bool> AutoConvertNakayLegacyMasks;
-        public ConfigEntry<bool> LegacyIndexAutoRefresh;
-        public ConfigEntry<int> LegacyCacheMemoryLimitMegabytes;
-        public ConfigEntry<bool> LegacyDiagnostics;
         public ConfigEntry<bool> DebugLogging;
         public ConfigEntry<bool> LogStateChanges;
         public ConfigEntry<bool> LogComposition;
@@ -42,42 +36,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 "Masks",
                 "Gradient Handling",
                 GradientHandlingMode.Auto,
-                "Auto preserves safe continuous R/G coverage, PreserveContinuous accepts explicit R/G coverage, and StrictCategorical keeps the original palette-only decoder.");
+                "Auto preserves safe continuous R/G coverage, PreserveContinuous accepts explicit R/G coverage, and StrictCategorical accepts only the defined palette.");
             result.UnknownStatePolicy = config.Bind("States", "UnknownStatePolicy",
                 global::NightOwlZzz.Koikatsu.BodyMaskLayers.UnknownStatePolicy.NoContribution,
                 "Behavior for clothing state values outside the confirmed vanilla 0-3 range.");
-            result.AllowUnauditedChaAlphaMask = config.Bind(
-                "Compatibility",
-                "Allow unaudited ChaAlphaMask versions",
-                false,
-                "If false, custom composition stays inactive when a ChaAlphaMask version other than audited 1.0.0 is detected.");
-            result.EnableNakayLegacyCompatibility = config.Bind(
-                "Compatibility",
-                "Enable Nakay Legacy Compatibility",
-                true,
-                "Resolve KK_ChaAlphaMask manifest textures directly when the old plugin is absent. Never modifies zipmods.");
-            result.AutoConvertNakayLegacyMasks = config.Bind(
-                "Compatibility",
-                "Auto Convert Nakay Legacy Masks",
-                true,
-                "Silently create a portable native BML2 layer from a resolved legacy source without overwriting an existing native layer. Saving the card or coordinate persists the copy.");
-            result.LegacyIndexAutoRefresh = config.Bind(
-                "Compatibility",
-                "Legacy Index Auto Refresh",
-                true,
-                "Build the session metadata index from Sideloader manifests once during startup.");
-            result.LegacyCacheMemoryLimitMegabytes = config.Bind(
-                "Compatibility",
-                "Legacy Cache Memory Limit MB",
-                128,
-                "Maximum memory for shared compiled legacy masks. Values are clamped to 16-1024 MB.");
-            result.LegacyDiagnostics = config.Bind(
-                "Diagnostics",
-                "Legacy Diagnostics",
-                false,
-                "Enable numeric legacy provider/cache counters. String formatting only occurs in explicit diagnostic dumps.");
             result.DebugLogging = config.Bind("Diagnostics", "DebugLogging", false,
-                "Log state, binding and composition decisions.");
+                "Enable diagnostic debug messages and numeric runtime counters.");
             result.LogStateChanges = config.Bind("Diagnostics", "LogStateChanges", false,
                 "Log runtime clothing state/item/availability transitions (rate limited per character).");
             result.LogComposition = config.Bind("Diagnostics", "LogComposition", false,
@@ -86,7 +50,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 "Minimum seconds between state-change log lines for each character (0.1-3600).");
             result.DumpDiagnosticsShortcut = config.Bind("Diagnostics", "DumpDiagnosticsShortcut",
                 new KeyboardShortcut(UnityEngine.KeyCode.F8, UnityEngine.KeyCode.LeftControl),
-                "Write a diagnostic snapshot to the log and BepInEx/config/BodyMaskLayers/Diagnostics.");
+                "Write a diagnostic snapshot to the log and the BepInEx config directory.");
             return result;
         }
 
@@ -107,11 +71,6 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 DefaultOutputResolution.Value,
                 1,
                 PortableMaskFormatLimits.MaximumDimension);
-        }
-
-        public int GetLegacyCacheMemoryLimitMegabytes()
-        {
-            return Clamp(LegacyCacheMemoryLimitMegabytes.Value, 16, 1024);
         }
 
         public float GetLogIntervalSeconds()

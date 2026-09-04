@@ -4,33 +4,29 @@ using BepInEx.Bootstrap;
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    public static class NakayChaAlphaMaskProvider
+    public static class ExternalMaskProvider
     {
-        public const string PluginGuid = LegacyMaskDescriptor.ProviderIdValue;
-        public const string AuditedVersion = "1.0.0";
-
         private const int NegativeCacheEntries = 4096;
+        private const int CacheLimitMegabytes = 128;
+        private const string SourceProviderGuid = ExternalMaskDescriptor.ProviderIdValue;
         private static readonly object SyncRoot = new object();
-        private static readonly LegacyClothingMaskCatalog Catalog = new LegacyClothingMaskCatalog();
-        private static BoundedLruCache<string, LegacyResolvedMask> _compiledCache;
+        private static readonly ExternalClothingMaskCatalog Catalog = new ExternalClothingMaskCatalog();
+        private static BoundedLruCache<string, ExternalResolvedMask> _compiledCache;
         private static GenerationNegativeCache<string> _negativeCache;
         private static bool _initialized;
         private static string _lastIndexError;
-        private static LegacyIndexRefreshResult _lastRefresh;
+        private static ExternalIndexRefreshResult _lastRefresh;
 
-        public static bool IsLegacyPluginInstalled
+        public static bool IsSourceProviderInstalled
         {
-            get { return Chainloader.PluginInfos.ContainsKey(PluginGuid); }
+            get { return Chainloader.PluginInfos.ContainsKey(SourceProviderGuid); }
         }
 
         public static bool DirectCompatibilityActive
         {
             get
             {
-                return BodyMaskLayersPlugin.Settings != null &&
-                       LegacyCompatibilityPolicy.ShouldUseDirectProvider(
-                           BodyMaskLayersPlugin.Settings.EnableNakayLegacyCompatibility.Value,
-                           IsLegacyPluginInstalled);
+                return !IsSourceProviderInstalled;
             }
         }
 
@@ -51,13 +47,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public static string BuildIndexSummary()
         {
-            LegacyIndexRefreshResult refresh = _lastRefresh;
+            ExternalIndexRefreshResult refresh = _lastRefresh;
             return string.Format(
-                "Nakay directProvider={0}; oldPluginInstalled={1}; catalogGeneration={2}; " +
+                "compatibleProvider={0}; sourceProviderInstalled={1}; catalogGeneration={2}; " +
                 "descriptors={3}; manifests={4}; reused={5}; parsed={6}; rejected={7}; " +
-                "compiledCache={8} entries/{9} bytes (limit {10}); negativeCache={11}; error={12}",
+                "compiledCache={8} entries/{9} bytes (cap {10} MB); negativeCache={11}; error={12}",
                 DirectCompatibilityActive,
-                IsLegacyPluginInstalled,
+                IsSourceProviderInstalled,
                 Catalog.Generation,
                 Catalog.DescriptorCount,
                 refresh == null ? 0 : refresh.ManifestCount,
@@ -66,7 +62,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 refresh == null ? 0 : refresh.RejectedEntryCount,
                 _compiledCache == null ? 0 : _compiledCache.Count,
                 _compiledCache == null ? 0L : _compiledCache.CurrentBytes,
-                _compiledCache == null ? 0L : _compiledCache.MaxBytes,
+                CacheLimitMegabytes,
                 _negativeCache == null ? 0 : _negativeCache.Count,
                 string.IsNullOrEmpty(_lastIndexError) ? "none" : _lastIndexError);
         }
@@ -81,38 +77,37 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 }
 
                 BodyMaskPerformanceMetrics.SetEnabled(
-                    BodyMaskLayersPlugin.Settings.LegacyDiagnostics.Value);
+                    BodyMaskLayersPlugin.Settings.DebugLogging.Value);
                 RecreateCaches();
                 _initialized = true;
             }
 
-            if (DirectCompatibilityActive &&
-                BodyMaskLayersPlugin.Settings.LegacyIndexAutoRefresh.Value)
+            if (DirectCompatibilityActive)
             {
                 RefreshIndex(false);
             }
         }
 
-        public static LegacyIndexRefreshResult RefreshIndex(bool forceFullRescan)
+        public static ExternalIndexRefreshResult RefreshIndex(bool forceFullRescan)
         {
             EnsureInitialized();
             lock (SyncRoot)
             {
-                BodyMaskPerformanceMetrics.Increment(PerformanceCounter.LegacyIndexScans);
+                BodyMaskPerformanceMetrics.Increment(PerformanceCounter.ExternalIndexScans);
                 _lastIndexError = null;
                 try
                 {
-                    IList<LegacyManifestSource> sources =
-                        SideloaderLegacyManifestSourceReader.Read();
-                    LegacyIndexRefreshResult result = Catalog.Refresh(
+                    IList<ExternalManifestSource> sources =
+                        SideloaderExternalManifestSourceReader.Read();
+                    ExternalIndexRefreshResult result = Catalog.Refresh(
                         sources,
-                        ClothingItemIdentityResolver.ResolveLegacyLocalItemId,
+                        ClothingItemIdentityResolver.ResolveExternalLocalItemId,
                         forceFullRescan);
                     if (result.Changed)
                     {
                         _compiledCache.Clear();
                         _negativeCache.BeginGeneration(result.Generation);
-                        BodyMaskCharacterController.NotifyLegacyIndexChanged();
+                        BodyMaskCharacterController.NotifyExternalIndexChanged();
                     }
 
                     BodyMaskPerformanceMetrics.Add(
@@ -125,8 +120,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 {
                     _lastIndexError = exception.Message;
                     BodyMaskLayersPlugin.Log.LogWarning(
-                        "Nakay legacy mask index refresh failed safely: " + exception.Message);
-                    return _lastRefresh ?? new LegacyIndexRefreshResult
+                        "Compatible mask index refresh failed: " + exception.Message);
+                    return _lastRefresh ?? new ExternalIndexRefreshResult
                     {
                         Generation = Catalog.Generation,
                         DescriptorCount = Catalog.DescriptorCount
@@ -135,67 +130,39 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
         }
 
-        public static void ApplyConfigurationChange(bool cacheLimitChanged)
-        {
-            EnsureInitialized();
-            bool shouldBuildInitialIndex;
-            lock (SyncRoot)
-            {
-                BodyMaskPerformanceMetrics.SetEnabled(
-                    BodyMaskLayersPlugin.Settings.LegacyDiagnostics.Value);
-                if (cacheLimitChanged)
-                {
-                    _compiledCache.SetMemoryLimit(GetCacheLimitBytes());
-                }
-
-                _negativeCache.BeginGeneration(Catalog.Generation + 1L);
-                _negativeCache.BeginGeneration(Catalog.Generation);
-                shouldBuildInitialIndex = DirectCompatibilityActive &&
-                                          BodyMaskLayersPlugin.Settings.LegacyIndexAutoRefresh.Value &&
-                                          _lastRefresh == null;
-            }
-
-            if (shouldBuildInitialIndex)
-            {
-                RefreshIndex(false);
-            }
-        }
-
         public static bool TryResolveForCharacter(
             ChaControl character,
             ClothingSlot slot,
-            out LegacyResolvedMask resolved,
+            out ExternalResolvedMask resolved,
             out string status)
         {
             resolved = null;
             status = null;
             if (!DirectCompatibilityActive)
             {
-                status = IsLegacyPluginInstalled
-                    ? "KK_ChaAlphaMask is installed; the upstream bridge owns legacy sources."
-                    : "Nakay legacy compatibility is disabled.";
+                status = "A separate body-mask provider is active.";
                 return false;
             }
 
             bool effectiveHighPoly = character != null &&
-                                     LegacyCharacterStateAdapter.IsEffectiveHighPoly(character);
+                                     ExternalCharacterStateAdapter.IsEffectiveHighPoly(character);
             if (character == null || slot == ClothingSlot.Top || !effectiveHighPoly)
             {
                 status = character != null && !effectiveHighPoly
-                    ? "Nakay body masks are limited to high-poly characters."
-                    : "No supported legacy slot.";
+                    ? "Compatible body masks require a high-poly character."
+                    : "No supported compatible mask slot.";
                 return false;
             }
 
             EnsureInitialized();
             if (Catalog.DescriptorCount == 0)
             {
-                status = "The legacy metadata catalog is empty.";
+                status = "The compatible mask metadata catalog is empty.";
                 return false;
             }
 
-            LegacyMaskBindingQuery query;
-            if (!LegacyCharacterStateAdapter.TryBuildBindingQuery(
+            ExternalMaskBindingQuery query;
+            if (!ExternalCharacterStateAdapter.TryBuildBindingQuery(
                     character,
                     slot,
                     out query))
@@ -209,17 +176,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             {
                 if (_negativeCache.Contains(queryKey, Catalog.Generation))
                 {
-                    status = "No legacy mask metadata for the current item (cached).";
+                    status = "No compatible mask metadata for the current item (cached).";
                     return false;
                 }
 
                 BodyMaskPerformanceMetrics.Increment(PerformanceCounter.ProviderResolutions);
-                LegacyMaskDescriptor descriptor;
+                ExternalMaskDescriptor descriptor;
                 if (!Catalog.TryResolve(query, out descriptor))
                 {
                     BodyMaskPerformanceMetrics.Increment(PerformanceCounter.MetadataCacheMisses);
                     _negativeCache.Add(queryKey, Catalog.Generation);
-                    status = "No legacy mask metadata for the current item.";
+                    status = "No compatible mask metadata for the current item.";
                     return false;
                 }
 
@@ -229,12 +196,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                                   "|" + (int)GradientHandlingMode.PreserveContinuous + "|" + (int)slot;
                 if (_compiledCache.TryGetValue(cacheKey, out resolved))
                 {
-                    status = "Resolved from compiled legacy mask cache.";
+                    status = "Resolved from the compatible mask cache.";
                     return true;
                 }
 
                 string error;
-                if (!LegacyMaskTextureCompiler.TryCompile(
+                if (!ExternalMaskTextureCompiler.TryCompile(
                         descriptor,
                         out resolved,
                         out error))
@@ -245,7 +212,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
                 resolved.CatalogGeneration = Catalog.Generation;
                 _compiledCache.Put(cacheKey, resolved, EstimateCacheBytes(resolved));
-                status = "Legacy source compiled from " +
+                status = "Compatible source loaded from " +
                          (descriptor.IsPng ? "Sideloader PNG." : "AssetBundle texture.");
                 return true;
             }
@@ -268,23 +235,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 _initialized = false;
                 _lastRefresh = null;
                 _lastIndexError = null;
-                LegacyCharacterStateAdapter.Reset();
+                ExternalCharacterStateAdapter.Reset();
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-        private static long EstimateCacheBytes(LegacyResolvedMask value)
+        private static long EstimateCacheBytes(ExternalResolvedMask value)
         {
             long bytes = Math.Max(1L, value.StorageBytes);
             bytes += 512;
@@ -298,13 +253,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         private static long GetCacheLimitBytes()
         {
-            int megabytes = BodyMaskLayersPlugin.Settings.GetLegacyCacheMemoryLimitMegabytes();
-            return (long)megabytes * 1024L * 1024L;
+            return (long)CacheLimitMegabytes * 1024L * 1024L;
         }
 
         private static void RecreateCaches()
         {
-            _compiledCache = new BoundedLruCache<string, LegacyResolvedMask>(
+            _compiledCache = new BoundedLruCache<string, ExternalResolvedMask>(
                 GetCacheLimitBytes(),
                 StringComparer.Ordinal,
                 BodyMaskPerformanceMetrics.Counters);
@@ -321,7 +275,5 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 Initialize();
             }
         }
-
-
     }
 }

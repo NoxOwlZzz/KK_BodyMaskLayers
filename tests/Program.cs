@@ -9,15 +9,15 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             TestCase[] pureTests = PureLogicTests.All();
             TestCase[] infrastructureTests = PerformanceInfrastructureTests.All();
             TestCase[] gradientTests = GradientCoverageTests.All();
-            TestCase[] legacyCatalogTests = LegacyCatalogTests.All();
+            TestCase[] externalCatalogTests = ExternalCatalogTests.All();
             TestCase[] architectureTests = ArchitectureComponentTests.All();
-            TestCase[] legacySessionTests = CharacterLegacyMaskSessionTests.All();
+            TestCase[] externalSessionTests = CharacterExternalMaskSessionTests.All();
             TestCase[] nativeStoreTests = NativeMaskLayerStoreTests.All();
             TestCase[] nativeDecodePipelineTests = NativeMaskDecodePipelineTests.All();
             TestCase[] tests = new TestCase[
                 pureTests.Length + infrastructureTests.Length + gradientTests.Length +
-                legacyCatalogTests.Length + architectureTests.Length +
-                legacySessionTests.Length + nativeStoreTests.Length +
+                externalCatalogTests.Length + architectureTests.Length +
+                externalSessionTests.Length + nativeStoreTests.Length +
                 nativeDecodePipelineTests.Length];
             Array.Copy(pureTests, 0, tests, 0, pureTests.Length);
             Array.Copy(infrastructureTests, 0, tests, pureTests.Length, infrastructureTests.Length);
@@ -28,37 +28,37 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 pureTests.Length + infrastructureTests.Length,
                 gradientTests.Length);
             Array.Copy(
-                legacyCatalogTests,
+                externalCatalogTests,
                 0,
                 tests,
                 pureTests.Length + infrastructureTests.Length + gradientTests.Length,
-                legacyCatalogTests.Length);
+                externalCatalogTests.Length);
             int architectureOffset = pureTests.Length + infrastructureTests.Length +
-                                     gradientTests.Length + legacyCatalogTests.Length;
+                                     gradientTests.Length + externalCatalogTests.Length;
             Array.Copy(
                 architectureTests,
                 0,
                 tests,
                 architectureOffset,
                 architectureTests.Length);
-            int legacySessionOffset = architectureOffset + architectureTests.Length;
+            int externalSessionOffset = architectureOffset + architectureTests.Length;
             Array.Copy(
-                legacySessionTests,
+                externalSessionTests,
                 0,
                 tests,
-                legacySessionOffset,
-                legacySessionTests.Length);
+                externalSessionOffset,
+                externalSessionTests.Length);
             Array.Copy(
                 nativeStoreTests,
                 0,
                 tests,
-                legacySessionOffset + legacySessionTests.Length,
+                externalSessionOffset + externalSessionTests.Length,
                 nativeStoreTests.Length);
             Array.Copy(
                 nativeDecodePipelineTests,
                 0,
                 tests,
-                legacySessionOffset + legacySessionTests.Length + nativeStoreTests.Length,
+                externalSessionOffset + externalSessionTests.Length + nativeStoreTests.Length,
                 nativeDecodePipelineTests.Length);
             int passed = 0;
             int failed = 0;

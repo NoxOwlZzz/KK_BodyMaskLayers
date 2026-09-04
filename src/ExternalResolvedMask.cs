@@ -1,8 +1,8 @@
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
-    public sealed class LegacyResolvedMask
+    public sealed class ExternalResolvedMask
     {
-        public LegacyMaskDescriptor Descriptor;
+        public ExternalMaskDescriptor Descriptor;
         public SemanticMask SemanticMask;
         public MaskColorStatistics Statistics;
         public string ContentHash;

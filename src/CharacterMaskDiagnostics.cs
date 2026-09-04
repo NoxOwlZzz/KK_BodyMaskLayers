@@ -6,14 +6,14 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     {
         private readonly NativeMaskLayerStore nativeLayers;
         private readonly CharacterNativeMaskService nativeMasks;
-        private readonly CharacterLegacyMaskCoordinator legacyMasks;
+        private readonly CharacterExternalMaskCoordinator externalMasks;
         private readonly CharacterClothingRuntime runtimeState;
         private readonly CharacterMaskCompositionEngine composition;
 
         public CharacterMaskDiagnostics(
             NativeMaskLayerStore layerStore,
             CharacterNativeMaskService nativeMaskService,
-            CharacterLegacyMaskCoordinator legacyMaskCoordinator,
+            CharacterExternalMaskCoordinator externalMaskCoordinator,
             CharacterClothingRuntime clothingRuntime,
             CharacterMaskCompositionEngine compositionEngine)
         {
@@ -27,9 +27,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 throw new ArgumentNullException("nativeMaskService");
             }
 
-            if (legacyMaskCoordinator == null)
+            if (externalMaskCoordinator == null)
             {
-                throw new ArgumentNullException("legacyMaskCoordinator");
+                throw new ArgumentNullException("externalMaskCoordinator");
             }
 
             if (clothingRuntime == null)
@@ -44,7 +44,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
             nativeLayers = layerStore;
             nativeMasks = nativeMaskService;
-            legacyMasks = legacyMaskCoordinator;
+            externalMasks = externalMaskCoordinator;
             runtimeState = clothingRuntime;
             composition = compositionEngine;
         }
@@ -61,9 +61,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             ClothingMaskLayerData layer = native.Layer;
             if (layer == null)
             {
-                if (legacyMasks.HasSource(slot))
+                if (externalMasks.HasSource(slot))
                 {
-                    return "No native mask loaded; legacy compatibility is automatic.";
+                    return "Compatible mask data is active and imports automatically.";
                 }
 
                 return nativeMasks.HasBindableItem(character, slot)
@@ -84,13 +84,13 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     layer.Height);
             }
 
-            if (LegacyCompatibilityPolicy.UpstreamPluginSuppressesConvertedNative(
-                    NakayChaAlphaMaskProvider.IsLegacyPluginInstalled,
+            if (ExternalCompatibilityPolicy.UpstreamPluginSuppressesConvertedNative(
+                    ExternalMaskProvider.IsSourceProviderInstalled,
                     layer.SourceContract,
                     layer.SourceProviderId))
             {
                 return string.Format(
-                    "{0}x{1} portable legacy copy - upstream KK_ChaAlphaMask owns this source.",
+                    "{0}x{1} mask - managed by an installed body-mask provider.",
                     layer.Width,
                     layer.Height);
             }

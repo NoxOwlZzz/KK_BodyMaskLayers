@@ -16,17 +16,17 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     {
         private readonly NativeMaskLayerStore store;
         private readonly NativeMaskDecodePipeline decodePipeline;
-        private readonly LegacyPortableLayerConverter legacyConverter;
+        private readonly ExternalPortableLayerConverter externalConverter;
         private readonly CharacterClothingRuntime runtimeState;
-        private readonly CharacterLegacyMaskSession legacySession;
+        private readonly CharacterExternalMaskSession externalSession;
         private readonly ICharacterMaskMutationSink mutationSink;
 
         public CharacterNativeMaskService(
             NativeMaskLayerStore layerStore,
             NativeMaskDecodePipeline nativeDecodePipeline,
-            LegacyPortableLayerConverter portableLegacyConverter,
+            ExternalPortableLayerConverter portableExternalConverter,
             CharacterClothingRuntime clothingRuntime,
-            CharacterLegacyMaskSession legacyMaskSession,
+            CharacterExternalMaskSession externalMaskSession,
             ICharacterMaskMutationSink sink)
         {
             if (layerStore == null)
@@ -39,9 +39,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 throw new ArgumentNullException("nativeDecodePipeline");
             }
 
-            if (portableLegacyConverter == null)
+            if (portableExternalConverter == null)
             {
-                throw new ArgumentNullException("portableLegacyConverter");
+                throw new ArgumentNullException("portableExternalConverter");
             }
 
             if (clothingRuntime == null)
@@ -49,9 +49,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 throw new ArgumentNullException("clothingRuntime");
             }
 
-            if (legacyMaskSession == null)
+            if (externalMaskSession == null)
             {
-                throw new ArgumentNullException("legacyMaskSession");
+                throw new ArgumentNullException("externalMaskSession");
             }
 
             if (sink == null)
@@ -61,9 +61,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
             store = layerStore;
             decodePipeline = nativeDecodePipeline;
-            legacyConverter = portableLegacyConverter;
+            externalConverter = portableExternalConverter;
             runtimeState = clothingRuntime;
-            legacySession = legacyMaskSession;
+            externalSession = externalMaskSession;
             mutationSink = sink;
         }
 
@@ -135,7 +135,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             store.ReplaceOwned(slot, layer);
             store.SetDecoded(slot, decode.SemanticMask, decode.Statistics);
             runtimeState.SetCurrentIdentity(slot, identity);
-            legacySession.MarkSlotDirty(slot);
+            externalSession.MarkSlotDirty(slot);
             CommitPersistentMutation(
                 "PNG imported for " + ClothingSlotRegistry.GetDisplayName(slot));
             result = decode.ReusedDecode
@@ -168,8 +168,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             ClothingMaskLayerData removed = store.Clear(slot);
-            legacySession.RegisterPortableLayerClear(slot, removed);
-            legacySession.MarkSlotDirty(slot);
+            externalSession.RegisterPortableLayerClear(slot, removed);
+            externalSession.MarkSlotDirty(slot);
             mutationSink.RequestImmediateRuntimeRefresh();
             CommitPersistentMutation(
                 "mask cleared for " + ClothingSlotRegistry.GetDisplayName(slot));
@@ -323,7 +323,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 }
 
                 ClothingSlot slot = (ClothingSlot)index;
-                legacySession.ResetConversionTracking(slot);
+                externalSession.ResetConversionTracking(slot);
                 ClothingMaskLayerData layer;
                 if (source != null && source.TryGetValue(slot, out layer))
                 {
@@ -372,7 +372,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 
         public void LoadPluginData(ExtensibleSaveFormat.PluginData data, string source)
         {
-            legacySession.ResetConversionTracking();
+            externalSession.ResetConversionTracking();
             Dictionary<ClothingSlot, ClothingMaskLayerData> loaded;
             string error;
             if (!CoordinateDataHandler.TryReadPluginData(data, out loaded, out error))
@@ -403,19 +403,19 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             mutationSink.RequestMaskDirty("plugin data loaded from " + source, false);
         }
 
-        public bool TryConvertLegacy(
+        public bool TryConvertExternal(
             ChaControl character,
             int index,
-            LegacyResolvedMask legacy,
+            ExternalResolvedMask external,
             out string result)
         {
             ClothingSlot slot = (ClothingSlot)index;
             ClothingItemIdentity identity =
                 runtimeState.GetCurrentIdentity(character, slot);
-            PortableLegacyLayer converted;
-            if (!legacyConverter.TryConvert(
+            PortableExternalLayer converted;
+            if (!externalConverter.TryConvert(
                     index,
-                    legacy,
+                    external,
                     runtimeState.IsStructurallySuppressed(index),
                     store.Get(slot).Layer,
                     identity,
