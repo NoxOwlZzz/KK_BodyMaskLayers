@@ -1,28 +1,27 @@
 # KK_BodyMaskLayers
 
-BodyMask Layers adds one independent body alpha mask PNG to each supported Koikatsu clothing slot. Every layer follows the state of its own garment, and active layers combine over the current vanilla or modded body mask.
+BodyMask Layers gives each supported Koikatsu clothing slot its own body alpha mask. Every mask follows the state and identity of its garment, and active masks are composed over the current body mask.
 
-- Version: `0.2.0`
+- Version: `0.3.0`
 - Plugin GUID: `com.nightowlzzz.koikatsu.bodymasklayers`
 - Author: NightOwlZzz / Owl
-- Supported processes: `Koikatu.exe` and `CharaStudio.exe`
+- Processes: `Koikatu.exe` and `CharaStudio.exe`
 
 ## Features
 
 - Independent masks for Top, Bottom, Bra, Shorts, Gloves, Pantyhose, Socks, Indoor Shoes, and Outdoor Shoes.
-- Native Maker controls inside the nine stock clothing tabs.
-- Load, preview, enable, clear, export, and bind actions for each layer.
-- Clothing-state-aware Full, Partial, and Off behavior.
-- Continuous 8-bit hide coverage with a compact bitset fast path for categorical masks.
-- Direct Compatibility Mode for original `KK_ChaAlphaMask` clothing metadata and textures when its DLL is absent.
-- Session metadata index, negative lookups, bounded compiled-mask LRU, and lazy source loading.
-- Silent automatic conversion of resolved Nakay masks to portable native BML2 layers by default.
-- Preservation of the upstream body mask and its packed blue/alpha channels.
-- Per-outfit persistence through Extended Save.
-- Card and coordinate transport of the original PNG bytes without storing the source file path.
-- Fixed slot-and-item binding using Sideloader identity when available.
-- Optional partial-coordinate integration for Coordinate Load Option `21.1.4`.
-- Coalesced dirty requests, at most one composition per character/frame, output-change upload suppression, and cached Maker UI lookups.
+- Maker controls inside the corresponding stock clothing tabs.
+- Load, preview, enable, clear, export, and bind actions for each mask.
+- Full, Partial, and Off behavior driven by the owning garment.
+- Continuous hide coverage and a compact categorical-mask path.
+- Automatic support for compatible clothing metadata and textures when no separate provider is installed.
+- Silent import of compatible sources into portable BML2 outfit data.
+- Preservation of the body mask supplied by the game or other plugins.
+- Per-outfit card and coordinate persistence through Extended Save.
+- Slot-and-item binding, using Sideloader identity when available.
+- Partial-coordinate integration for Coordinate Load Option `21.1.4`.
+- Dirty-only composition, cached lookups, and unchanged-output upload suppression.
+- Late-frame composition so clothing visibility changes reach the body mask before rendering.
 
 ## Requirements
 
@@ -30,7 +29,7 @@ BodyMask Layers adds one independent body alpha mask PNG to each supported Koika
 - KKAPI `1.42.2` or newer.
 - ExtensibleSaveFormat `20.0` or newer.
 
-Sideloader is required only for direct resolution of zipmod legacy sources. KCOX, ChaAlphaMask, Material Editor, Uncensor Selector, clothing-state menus, and Coordinate Load Option remain optional compatibility targets.
+Sideloader is required only when resolving compatible textures declared by zipmods. KCOX, Material Editor, Uncensor Selector, clothing-state menus, and Coordinate Load Option are optional compatibility targets.
 
 ## Installation
 
@@ -49,16 +48,18 @@ Restart the game after replacing the DLL. Do not hot-reload this plugin.
 3. Scroll to **Native body alpha mask**.
 4. Select **Load new mask texture** and choose a valid PNG.
 5. Confirm the preview and status message.
-6. Cycle the available clothing states and inspect the result.
+6. Inspect every available clothing state.
 7. Save the character card or coordinate.
 
-The Load action is unavailable when the selected slot has no bindable clothing item. **Bind mask to current item** should only be used after deliberately replacing a garment with compatible geometry.
+The Load action is unavailable when the slot has no bindable item. **Bind mask to current item** deliberately replaces the stored item identity; use it only after replacing a garment with compatible body coverage.
 
-Legacy Nakay sources do not add controls or prompts to Maker. With the default `Auto Convert Nakay Legacy Masks=true`, a successfully resolved source is silently copied into a portable native BML2 layer without modifying the zipmod or overwriting an existing native layer. Save the card or coordinate normally to retain that copy. Set the option to `false` when runtime-only compatibility without automatic persistence is preferred.
+Compatible external sources do not add controls or prompts. When resolved, they are imported automatically without modifying the source zipmod or overwriting a mask already assigned to that slot. A normal card or coordinate save persists the imported copy.
 
 ## Saved data
 
-Native and automatically converted masks are stored in the Extended Save data of each `ChaFileClothes` outfit. Different outfits in one card can therefore use different masks. Coordinate files carry the masks for their outfit, and character cards carry the masks for every saved outfit. The original PNG bytes, enable state, interpretation mode, provenance/fingerprint, validation data, and item binding are stored; compiled buffers and local import paths are not. Automatic conversion happens only after a legacy source resolves and reaches disk only through a normal card/coordinate save. When automatic conversion is disabled, direct compatibility remains runtime-only and stores nothing.
+Each `ChaFileClothes` outfit owns its mask records. Different outfits in one card can therefore use different masks, coordinate files carry the current outfit's masks, and character cards carry the outfits saved by the game.
+
+The payload stores the original PNG bytes, enable state, interpretation mode, source metadata, validation data, and slot-and-item binding. Runtime buffers and source file paths are not stored.
 
 ## Mask palette
 
@@ -69,71 +70,65 @@ Native and automatically converted masks are stored in the Extended Save data of
 | Black `#000000` | hidden | hidden | visible |
 | Red `#FF0000` | hidden | hidden | visible |
 
-Exact palette colors remain bit-identical to 0.1.x behavior. In default `Auto`, compatible intermediate native R/G values are preserved as Full/Partial visibility and decoded once into 8-bit coverage; B data is rejected as ambiguous/packed instead of silently reinterpreted. Binary masks resample category-aware with nearest neighbor, while continuous state planes use bilinear interpolation after decoding. PNG imports remain square, power-of-two and 8-bit. Fixed internal format guards accept dimensions from 1 through 4096 pixels and embedded PNG data up to 32 MiB; these guards are not exposed as user settings. See [MASK_AUTHORING.md](MASK_AUTHORING.md) for details.
+`Gradient Handling = Auto` also preserves compatible intermediate R/G values as continuous coverage. Blue data is rejected by default because it can represent unrelated packed information. Binary masks resize with nearest-neighbor sampling; continuous state planes use bilinear interpolation after decoding. Embedded PNG data has a fixed 32 MiB cap.
 
-`Gradient Handling` is captured in each native layer when it is imported. Changing the global default affects new imports, not already stored BML2 layers; reimport a source deliberately to reinterpret it. BML1 layers migrate as `StrictCategorical` so existing cards retain their previous behavior.
+The interpretation mode is stored with each imported layer. Changing the global default affects later imports; reimport a source to reinterpret an existing layer. Schema 1 payloads use `StrictCategorical` when read.
+
+See [MASK_AUTHORING.md](MASK_AUTHORING.md) for authoring details.
 
 ## Configuration
 
-The live configuration is created at:
-
-```text
-<game-root>\BepInEx\config\com.nightowlzzz.koikatsu.bodymasklayers.cfg
-```
+The live configuration is created under the game's BepInEx `config` directory.
 
 | Setting | Default | Purpose |
 |---|---:|---|
 | `Enabled` | `true` | Global contribution switch |
+| `Default output resolution` | `512` | Composition size when no upstream mask size is available |
+| `Color classification` | `Threshold` | Categorical color classifier |
 | `ColorTolerance` | `12` | Threshold RGB tolerance |
 | `UnknownColorPolicy` | `RejectMask` | Handling of unsupported colors |
-| `Gradient Handling` | `Auto` | Preserve safe R/G gradients or select strict categorical behavior |
+| `Gradient Handling` | `Auto` | Continuous or strict categorical interpretation |
 | `UnknownStatePolicy` | `NoContribution` | Handling of clothing states outside `0..3` |
-| `Enable Nakay Legacy Compatibility` | `true` | Direct legacy provider when the old DLL is absent |
-| `Auto Convert Nakay Legacy Masks` | `true` | Silently create portable native copies of resolved legacy masks |
-| `Legacy Index Auto Refresh` | `true` | Build the session manifest index once at startup |
-| `Legacy Cache Memory Limit MB` | `128` | Bounded shared compiled-mask LRU |
-| `Legacy Diagnostics` | `false` | Numeric provider/cache counters in explicit dumps |
-| `DebugLogging` | `false` | Detailed diagnostic logging |
+| `DebugLogging` | `false` | Detailed diagnostic logging and counters |
 | `LogStateChanges` | `false` | Clothing-state logging |
 | `LogComposition` | `false` | Composition timing logging |
-| `DumpDiagnosticsShortcut` | `F8 + LeftControl` | Write a diagnostic snapshot |
+| `LogIntervalSeconds` | `1` | Rate limit for repeated diagnostic messages |
+| `DumpDiagnosticsShortcut` | `F8 + LeftControl` | Write a diagnostic snapshot to the log and config directory |
 
-A complete example is available in [`config/com.nightowlzzz.koikatsu.bodymasklayers.cfg.example`](config/com.nightowlzzz.koikatsu.bodymasklayers.cfg.example).
-
-Mask binding is always slot-and-item: replacing a garment leaves its stored mask inactive until **Bind mask to current item** is used deliberately. Resolution and embedded-PNG size safety guards are fixed internal format limits rather than configuration options.
+Compatible-source loading, indexing, import, and coexistence are automatic rather than configuration modes. A complete example is available in [`config/com.nightowlzzz.koikatsu.bodymasklayers.cfg.example`](config/com.nightowlzzz.koikatsu.bodymasklayers.cfg.example).
 
 ## Build and tests
 
-The project targets .NET Framework 3.5 and expects local compile references copied from a valid game installation. Those DLLs are intentionally excluded from the repository and from release packages.
+The project targets .NET Framework 3.5. Compile references come from a valid game installation and are excluded from the repository and release packages.
 
 ```bat
-copy-references.bat "C:\path\to\Koikatsu"
+copy-references.bat "KOIKATSU_GAME_DIRECTORY"
 build-release.bat
 run-tests.bat
 ```
 
-`KOIKATSU_DIR` may be set instead of passing the game directory to the scripts. Visual Studio 2022 or compatible MSBuild tooling is required.
+Visual Studio 2022 or compatible MSBuild tooling is required. Release builds omit debug symbols.
 
-Release builds intentionally omit debug symbols and local PDB paths.
+The existing pure .NET suite covers serialization, schema migration, binding, metadata parsing, categorical and continuous decoding, composition rules, caches, and scheduling. Runtime appearance and lifecycle behavior should also be checked in-game before publishing a release.
 
 ## Compatibility and limitations
 
-- Direct Nakay compatibility reads `<ChaAlphaMask><mask>` entries already exposed by Sideloader manifests, resolves original IDs through Sideloader, and loads only the declared PNG or AssetBundle texture. It supports Bottom, Bra, Shorts, Gloves, Pantyhose, Socks, and the selected Indoor/Outdoor Shoes source, including integrated `botMask` and object-option constraints.
-- The binding chain is equipped clothing category/local ID -> Sideloader GUID and original ID -> matching `guid/category/id/botMask/objOpt` manifest record -> `pngBodyMaskPath` or `abPath` plus `abBodyMaskName`. Exact GUID/original identity wins inside a resolved-ID bucket; incomplete legacy metadata uses a deterministic fallback.
-- The audited old plugin is `KK_ChaAlphaMask` / `nakay.kk.ChaAlphaMask` `1.0.0`. When installed, it remains the upstream owner and the direct provider fast-returns to prevent double application. Unaudited installed versions are disabled conservatively unless explicitly allowed.
-- Direct compatibility was implemented against the confirmed raw-state contract `0=R`, `1=G`, `2=B`, `3=Off`. BodyMask Layers combines decoded sources with maximum hide coverage to prevent overlapping soft edges from darkening; the old shader sums overlapping legacy channels, so exact parity for overlapping semi-transparent legacy sources remains a runtime comparison item.
-- Automatic conversion is silent, preserves binding/provenance/fingerprint and continuous state coverage, never overwrites an existing native layer, and does not alter the original legacy source. Disabling it leaves direct compatibility runtime-only.
-- The provider uses a light 0.5-second fallback poll only for game changes without a reliable event. Polling compares references, IDs, scalar values and states; it performs no pixel reads, manifest scans, IO, decode, hashing, preview generation or composition when unchanged.
-- Direct legacy sources are applied only to effective high-poly characters. Native `ChaControl.hiPoly` and the optional audited `KK_ForceHighPoly.IsHiPoly` result are recognized; unresolved low-poly characters are left unchanged.
-- Coordinate Load Option partial-slot integration is version-gated to `21.1.4`.
-- High-resolution masks increase card size and composition cost.
+- The built-in reader understands `<ChaAlphaMask><mask>` entries exposed by Sideloader manifests and loads only the declared PNG or AssetBundle texture.
+- It supports Bottom, Bra, Shorts, Gloves, Pantyhose, Socks, and the selected Indoor or Outdoor Shoes source, including integrated-bottom and object-option constraints.
+- Matching uses the equipped category and item identity, Sideloader GUID/original ID, and the corresponding manifest record.
+- If a separate provider is installed, its material writes become the upstream composition base and the built-in metadata reader remains idle to prevent duplicate ownership.
+- Compatible sources use raw state coverage `0=R`, `1=G`, `2=B`, and `3=Off` and are combined with maximum hide coverage.
+- The fallback poll handles game changes without a reliable event and performs no image decoding, source IO, or composition while state is unchanged.
+- Compatible source lookup applies to effective high-poly characters.
 - A body shader without `_AlphaMask`, `_alpha_a`, and `_alpha_b` is left untouched.
-- Automatic mask generation, painting, accessories, KKS, and multi-mask stacks are not implemented.
+- Automatic mask generation, painting, accessories, KKS, and multiple masks within one clothing slot are outside the plugin's scope.
 
-Pure .NET tests cover a pinned BML1 fixture and BML2 migration, parsing/index reuse (including 2,048 synthetic manifests), binary/continuous decoding, 512/1024 resampling, overlap rules, output B/A preservation, bounded caches, warm compiled-state buffer reuse, scheduling and a synthetic 600-tick idle model. Runtime visual comparison with original cards/coordinates/zipmods, Studio/game lifecycle, UI layout and actual 600-frame Unity profiling still require manual in-game validation; this source update does not claim those results.
-
-The binary data format is documented in [DATA_FORMAT.md](DATA_FORMAT.md). This repository does not redistribute game assemblies or third-party plugin DLLs.
+The binary data format is documented in [DATA_FORMAT.md](DATA_FORMAT.md). This repository does not redistribute game assemblies, third-party plugins, mods, cards, or textures.
 
 ## Credits
 
-Built for the Koikatsu modding ecosystem using BepInEx, HarmonyX, IllusionModdingAPI/KKAPI, ExtensibleSaveFormat and Sideloader. Direct legacy interoperability is based on the public runtime contract of Nakay's Character Alpha Mask; no third-party DLL, mod, card, texture or AssetBundle is redistributed.
+Built for the Koikatsu modding ecosystem using BepInEx, HarmonyX, IllusionModdingAPI/KKAPI, ExtensibleSaveFormat, and Sideloader.
+
+## License
+
+No license has been selected for this repository. Public redistribution should wait until the copyright holder adds a `LICENSE` file.

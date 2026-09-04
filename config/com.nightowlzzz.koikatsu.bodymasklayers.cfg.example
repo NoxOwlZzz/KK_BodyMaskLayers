@@ -1,19 +1,17 @@
-## Example configuration for KK_BodyMaskLayers 0.2.0.
-## Use this example only when manual configuration is needed.
-## BepInEx normally creates the live file on first start.
+## Example configuration for KK_BodyMaskLayers 0.3.0.
+## BepInEx creates the live configuration when the plugin starts.
 
 [General]
 
-## Master switch. False restores the upstream body mask and stops custom contribution.
+## Restores the upstream body mask without deleting stored clothing masks when false.
 # Setting type: Boolean
 # Default value: true
 Enabled = true
 
 [Masks]
 
-## PNG validation uses fixed internal format guards: square power-of-two dimensions
-## from 1 through 4096 and no more than 32 MiB of embedded PNG data.
-
+## Composition size used only when the upstream body mask has no usable size.
+## Embedded PNG data has a fixed 32 MiB cap.
 # Setting type: Int32
 # Default value: 512
 Default output resolution = 512
@@ -23,70 +21,43 @@ Default output resolution = 512
 # Default value: Threshold
 Color classification = Threshold
 
+## RGB tolerance used by Threshold classification.
 # Setting type: Int32
 # Default value: 12
 ColorTolerance = 12
 
-## RejectMask, NoContribution, or HideWhenNotOff. Under Threshold + RejectMask,
-## a no-blue exported palette with at most 12.5% nearby unknown pixels is normalized safely.
+## RejectMask, NoContribution, or HideWhenNotOff.
 # Setting type: UnknownColorPolicy
 # Default value: RejectMask
 UnknownColorPolicy = RejectMask
 
-## Auto preserves safe continuous R/G values. PreserveContinuous accepts explicit
-## native R/G coverage. StrictCategorical keeps the 0.1.x palette-only behavior.
-## The selected mode is stored with each newly imported layer; changing this default
-## does not reinterpret existing BML2 layers.
+## Auto preserves compatible R/G coverage. PreserveContinuous accepts explicit R/G
+## state coverage. StrictCategorical accepts only the defined categorical palette.
+## The selected mode is stored with each newly imported layer.
 # Setting type: GradientHandlingMode
 # Default value: Auto
 Gradient Handling = Auto
 
 [States]
 
-## NoContribution is the safe behavior for values outside 0..3.
+## Behavior for clothing state values outside the supported 0..3 range.
 # Setting type: UnknownStatePolicy
 # Default value: NoContribution
 UnknownStatePolicy = NoContribution
 
-[Compatibility]
-
-# Setting type: Boolean
-# Default value: false
-Allow unaudited ChaAlphaMask versions = false
-
-## Resolve original KK_ChaAlphaMask metadata and textures directly when the old DLL
-## is absent. Direct resolution never modifies the original zipmod.
-# Setting type: Boolean
-# Default value: true
-Enable Nakay Legacy Compatibility = true
-
-## Silently create a portable native BML2 layer after a legacy source resolves.
-## Existing native layers are never overwritten. A normal card/coordinate save
-## persists the converted copy; set false for runtime-only compatibility.
-# Setting type: Boolean
-# Default value: true
-Auto Convert Nakay Legacy Masks = true
-
-## Build the session metadata index once at startup when direct compatibility is active.
-# Setting type: Boolean
-# Default value: true
-Legacy Index Auto Refresh = true
-
-## Shared compiled-mask LRU limit. Runtime values are clamped to 16-1024 MB.
-# Setting type: Int32
-# Default value: 128
-Legacy Cache Memory Limit MB = 128
-
 [Diagnostics]
 
+## Enables diagnostic debug messages and numeric runtime counters.
 # Setting type: Boolean
 # Default value: false
 DebugLogging = false
 
+## Logs clothing state, item, and availability transitions.
 # Setting type: Boolean
 # Default value: false
 LogStateChanges = false
 
+## Logs composition timing for dirty mask rebuilds.
 # Setting type: Boolean
 # Default value: false
 LogComposition = false
@@ -96,12 +67,8 @@ LogComposition = false
 # Default value: 1
 LogIntervalSeconds = 1
 
-## BepInEx KeyboardShortcut syntax.
+## Writes a diagnostic snapshot to the log and the BepInEx config directory.
+## Uses BepInEx KeyboardShortcut syntax.
 # Setting type: KeyboardShortcut
 # Default value: F8 + LeftControl
 DumpDiagnosticsShortcut = F8 + LeftControl
-
-## Numeric provider/cache counters. Disabled by default.
-# Setting type: Boolean
-# Default value: false
-Legacy Diagnostics = false

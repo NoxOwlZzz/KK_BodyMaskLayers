@@ -1,19 +1,29 @@
 # Changelog
 
+## 0.3.0 - 2026-09-04
+
+- Made compatible metadata loading, conversion, indexing, and coexistence automatic instead of separate configuration modes.
+- Moved character mask processing to late-frame execution so clothing visibility changes are composed before rendering.
+- Renamed the compatibility subsystem around external and imported data while preserving serialized provider IDs, fingerprints, and schema values.
+- Reduced configuration and documentation to the settings and files required to build, maintain, and use the plugin.
+- Preserved pending composition, source resolution, and automatic-import persistence after transient failures.
+- Removed unused internal helpers and an unused TextMeshPro build reference.
+- Updated release metadata and public documentation for version 0.3.0.
+
 ## 0.2.0 - 2026-08-22
 
-- Added direct, optional compatibility for original `KK_ChaAlphaMask` Sideloader metadata and declared PNG/AssetBundle textures without requiring its DLL or a card/coordinate resave.
+- Added direct compatibility for declared Sideloader body-mask metadata and PNG/AssetBundle textures without requiring another DLL or a card/coordinate resave.
 - Added continuous 8-bit state coverage, categorical bitset fast paths, gradient-aware decoding, binary nearest-neighbor and continuous bilinear resampling, and max-hide composition with upstream B/A preservation.
 - Added the BML2 schema for interpretation/provenance/fingerprint metadata while retaining BML1 reads and original PNG bytes.
-- Added an incremental session manifest catalog, generation negative cache, bounded compiled-mask LRU, deterministic fingerprints and native/legacy duplicate suppression.
-- Added silent automatic conversion of resolved Nakay masks into portable native BML2 layers, with no legacy-specific Maker UI or prompts and no overwrite of existing native layers.
+- Added an incremental session manifest catalog, generation negative cache, bounded compiled-mask LRU, deterministic fingerprints and native/external duplicate suppression.
+- Added silent automatic conversion of resolved external masks into portable native BML2 layers, with no source-specific Maker UI or prompts and no overwrite of existing native layers.
 - Added numeric diagnostic counters, coalesced per-frame scheduling and unchanged-output upload suppression.
 - Added pure tests for a pinned BML1 migration fixture, schema corruption, a 2,048-manifest cold/warm catalog, continuous gradients/antialiasing, 512/1024 resampling, mixed overlap, bounded caches, warm state-buffer reuse and a synthetic 600-tick idle contract.
 - Fixed native and converted mask persistence across card, outfit and coordinate save/reload paths.
 - Fixed binding to slot-and-item identity, removed the unsafe slot-only mode and retained explicit rebinding for deliberate garment replacements.
-- Removed configurable PNG byte and resolution controls while retaining fixed portable-format guards of 32 MiB and 4096 pixels.
-- Split persistence, native decode, clothing runtime, composition, diagnostics and legacy compatibility into cohesive owned components.
-- Removed local PDB paths from Release assemblies and added a PDB output guard.
+- Removed configurable PNG size controls while retaining the fixed 32 MiB format cap.
+- Split persistence, native decode, clothing runtime, composition, diagnostics and external compatibility into cohesive owned components.
+- Configured Release assemblies to omit debug symbols.
 - Added source-only repository exclusions and parameterized game-directory scripts.
 
 ## 0.1.2
