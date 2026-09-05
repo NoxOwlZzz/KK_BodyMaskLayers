@@ -139,7 +139,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 {
                     byte previousRaw = observedRawStates[index];
                     observedRawStates[index] = raw;
-                    GarmentState resolved = ClothingStateResolver.Resolve(raw);
+                    GarmentState resolved = ClothingStateResolver.Resolve(
+                        ClothingStateResolver.NormalizeForSlot((ClothingSlot)index, raw));
                     bool equivalent = AreEffectiveStatePlanesEquivalent(
                         index,
                         previousRaw,
@@ -269,12 +270,19 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             return ReadRawState(character, index);
         }
 
+        public byte GetEffectiveRawState(ChaControl character, int index)
+        {
+            return ClothingStateResolver.NormalizeForSlot(
+                (ClothingSlot)index,
+                ReadRawState(character, index));
+        }
+
         public GarmentState ResolveStateForLayer(
             ChaControl character,
             int index,
             NativeMaskLayerStore nativeLayers)
         {
-            GarmentState state = ClothingStateResolver.Resolve(GetRawState(character, index));
+            GarmentState state = ClothingStateResolver.Resolve(GetEffectiveRawState(character, index));
             ClothingMaskLayerData layer =
                 nativeLayers.Get((ClothingSlot)index).Layer;
             UnknownStatePolicy policy = layer.OptionalStatePolicy ??
@@ -290,6 +298,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             byte raw,
             NativeMaskLayerStore nativeLayers)
         {
+            raw = ClothingStateResolver.NormalizeForSlot((ClothingSlot)index, raw);
             GarmentState state = ClothingStateResolver.Resolve(raw);
             ClothingMaskLayerData layer =
                 nativeLayers.Get((ClothingSlot)index).Layer;
@@ -369,7 +378,9 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             ExternalResolvedMask external =
                 externalSession.GetResolution((ClothingSlot)index);
             return external == null || external.SemanticMask == null ||
-                   external.SemanticMask.AreStatePlanesEquivalent(previousRaw, currentRaw);
+                   external.SemanticMask.AreStatePlanesEquivalent(
+                       ClothingStateResolver.NormalizeForSlot((ClothingSlot)index, previousRaw),
+                       ClothingStateResolver.NormalizeForSlot((ClothingSlot)index, currentRaw));
         }
 
         private bool CanWriteStateLog()

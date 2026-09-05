@@ -131,7 +131,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             ClothingItemIdentity current =
                 runtimeState.GetCurrentIdentity(character, slot);
             byte raw = runtimeState.GetRawState(character, index);
-            GarmentState state = ClothingStateResolver.Resolve(raw);
+            GarmentState state = ClothingStateResolver.Resolve(
+                runtimeState.GetEffectiveRawState(character, index));
             bool runtimeObject = (runtimeState.AvailabilityMask & (1 << index)) != 0;
             bool structurallySuppressed = runtimeState.IsStructurallySuppressed(index);
             NativeMaskLayerSlotState native = nativeLayers.Get(slot);

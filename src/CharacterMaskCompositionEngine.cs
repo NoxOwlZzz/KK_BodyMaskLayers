@@ -201,7 +201,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 ExternalResolvedMask external =
                     externalSession.GetResolution((ClothingSlot)index);
                 byte externalRawState = eligible || external != null
-                    ? runtimeState.GetRawState(character, index)
+                    ? runtimeState.GetEffectiveRawState(character, index)
                     : (byte)3;
                 bool externalContributes = IsExternalLayerActive(index) &&
                                          externalRawState <= 2 &&
@@ -282,7 +282,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                         externalSession.GetResolution((ClothingSlot)index);
                     customHiddenCount += MaskComposer.Accumulate(
                         external.SemanticMask,
-                        runtimeState.GetRawState(character, index),
+                        runtimeState.GetEffectiveRawState(character, index),
                         width,
                         height,
                         resources.HideCoverage,
