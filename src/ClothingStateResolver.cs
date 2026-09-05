@@ -2,6 +2,29 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
     public static class ClothingStateResolver
     {
+        // UpdateVisible hides binary slots at any nonzero state and pantyhose at 2/3.
+        // Normalize the mask input without changing the game's stored clothing state.
+        internal static byte NormalizeForSlot(ClothingSlot slot, byte rawState)
+        {
+            if (rawState != 1 && rawState != 2)
+            {
+                return rawState;
+            }
+
+            switch (slot)
+            {
+                case ClothingSlot.Gloves:
+                case ClothingSlot.Socks:
+                case ClothingSlot.IndoorShoes:
+                case ClothingSlot.OutdoorShoes:
+                    return 3;
+                case ClothingSlot.Pantyhose:
+                    return rawState == 2 ? (byte)3 : rawState;
+                default:
+                    return rawState;
+            }
+        }
+
         public static GarmentState Resolve(byte rawState)
         {
             switch (rawState)

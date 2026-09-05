@@ -17,6 +17,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
             return new TestCase[]
             {
                 new TestCase("states: raw 0/1/2/3 and every unknown byte", StateRawMapping),
+                new TestCase("states: slot visibility and every raw byte", StateSlotVisibility),
                 new TestCase("states: every unknown-state policy", StateUnknownPolicies),
                 new TestCase("colors: canonical yellow/green/black/red", ColorCanonicalExact),
                 new TestCase("colors: blue policies", ColorBluePolicies),
@@ -69,6 +70,33 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                     GarmentState.Unknown,
                     ClothingStateResolver.Resolve((byte)raw),
                     "Every raw state above 3 must remain Unknown: " + raw + ".");
+            }
+        }
+
+        private static void StateSlotVisibility()
+        {
+            byte[,] expectedKnownStates =
+            {
+                { 0, 1, 2, 3 },
+                { 0, 1, 2, 3 },
+                { 0, 1, 2, 3 },
+                { 0, 1, 2, 3 },
+                { 0, 3, 3, 3 },
+                { 0, 1, 3, 3 },
+                { 0, 3, 3, 3 },
+                { 0, 3, 3, 3 },
+                { 0, 3, 3, 3 }
+            };
+            for (int slot = 0; slot < expectedKnownStates.GetLength(0); slot++)
+            {
+                for (int raw = 0; raw <= byte.MaxValue; raw++)
+                {
+                    byte expected = raw < 4 ? expectedKnownStates[slot, raw] : (byte)raw;
+                    Check.Equal(
+                        expected,
+                        ClothingStateResolver.NormalizeForSlot((ClothingSlot)slot, (byte)raw),
+                        "Unexpected visibility plane for slot " + slot + ", raw " + raw + ".");
+                }
             }
         }
 

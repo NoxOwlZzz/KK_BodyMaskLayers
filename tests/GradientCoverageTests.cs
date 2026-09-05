@@ -12,6 +12,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 new TestCase("coverage: native gradient modes and diagnostics", NativeGradientModes),
                 new TestCase("coverage: horizontal vertical diagonal gradients and antialiasing", GradientShapesAndAntialiasing),
                 new TestCase("coverage: external RGB raw states", ExternalRawStates),
+                new TestCase("coverage: slot visibility restores native and external masks", SlotVisibilityComposition),
                 new TestCase("coverage: binary bitset boundaries and storage", BinaryBitsetBoundaries),
                 new TestCase("coverage: 512 and 1024 binary versus continuous storage", LargeStorageFootprints),
                 new TestCase("coverage: nearest binary and bilinear continuous", ResamplingPaths),
@@ -177,6 +178,95 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers.Tests
                 0,
                 MaskComposer.Accumulate(mask, (byte)3, 2, 1, stateOutput, workspace),
                 "Raw state 3/Off must not contribute.");
+        }
+
+        private static void SlotVisibilityComposition()
+        {
+            SemanticMask native = DecodeAuto(
+                new Rgba32[]
+                {
+                    new Rgba32(0, 0, 0, 255),
+                    new Rgba32(255, 255, 0, 255),
+                    new Rgba32(255, 255, 0, 255)
+                }, 3, 1);
+            SemanticMask external;
+            MaskColorStatistics statistics;
+            string error;
+            Check.True(
+                MaskColorDecoder.TryDecodeExternalRgbStateCoverage(
+                    new Rgba32[]
+                    {
+                        new Rgba32(0, 0, 0, 255),
+                        new Rgba32(255, 192, 160, 255),
+                        new Rgba32(0, 0, 0, 255)
+                    }, 3, 1, out external, out statistics, out error),
+                "External visibility fixture must decode: " + error);
+            SemanticMask otherLayer = new SemanticMask(
+                3, 1, new MaskPixelRule[]
+                {
+                    MaskPixelRule.NeverHide,
+                    MaskPixelRule.NeverHide,
+                    MaskPixelRule.HideWhenNotOff
+                });
+            Rgba32[] basePixels =
+            {
+                new Rgba32(255, 255, 11, 21),
+                new Rgba32(255, 255, 12, 22),
+                new Rgba32(255, 255, 13, 23)
+            };
+            byte[] coverage = new byte[3];
+            Rgba32[] output = new Rgba32[3];
+            MaskComposeWorkspace workspace = new MaskComposeWorkspace();
+            for (int index = 0; index < 9; index++)
+            {
+                ClothingSlot slot = (ClothingSlot)index;
+                for (byte raw = 1; raw <= 2; raw++)
+                {
+                    byte effective = ClothingStateResolver.NormalizeForSlot(slot, raw);
+                    if (effective != 3)
+                    {
+                        Array.Clear(coverage, 0, coverage.Length);
+                        MaskComposer.Accumulate(native, effective, 3, 1, coverage, workspace);
+                        MaskComposer.Accumulate(external, effective, 3, 1, coverage, workspace);
+                        Check.SequenceEqual(
+                            new byte[] { 255, raw == 1 ? (byte)192 : (byte)160, 0 },
+                            coverage,
+                            "Visible partial states must preserve native and external planes.");
+                        continue;
+                    }
+
+                    Check.False(native.AreStatePlanesEquivalent(0, effective),
+                        "Hiding a native mask must invalidate its effective plane.");
+                    Check.False(external.AreStatePlanesEquivalent(0, effective),
+                        "Hiding an external mask must invalidate its effective plane.");
+                    Check.True(native.AreStatePlanesEquivalent(effective, 3),
+                        "Equivalent hidden native states must avoid extra composition.");
+                    Check.True(external.AreStatePlanesEquivalent(effective, 3),
+                        "Equivalent hidden external states must avoid extra composition.");
+                    byte[] transition = { 0, raw, 0 };
+                    for (int step = 0; step < transition.Length; step++)
+                    {
+                        byte state = ClothingStateResolver.NormalizeForSlot(slot, transition[step]);
+                        Array.Clear(coverage, 0, coverage.Length);
+                        MaskComposer.Accumulate(native, state, 3, 1, coverage, workspace);
+                        MaskComposer.Accumulate(external, state, 3, 1, coverage, workspace);
+                        MaskComposer.Accumulate(otherLayer, (byte)0, 3, 1, coverage, workspace);
+                        byte expectedVisibility = step == 1 ? (byte)255 : (byte)0;
+                        BodyMaskFormatAdapter.WriteContinuousBodyMask(
+                            basePixels, 3, 1, 1f, 1f, coverage, 3, 1, output);
+                        Check.SequenceEqual(
+                            new Rgba32[]
+                            {
+                                new Rgba32(expectedVisibility, expectedVisibility, 11, 21),
+                                new Rgba32(expectedVisibility, expectedVisibility, 12, 22),
+                                new Rgba32(0, 0, 13, 23)
+                            },
+                            output,
+                            "On/off/on must restore skin and preserve another garment's mask for " +
+                            slot + ", raw " + transition[step] + ".");
+                    }
+                }
+            }
         }
 
         private static void GradientShapesAndAntialiasing()

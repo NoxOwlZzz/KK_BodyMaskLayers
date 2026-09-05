@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 - 2026-09-05
+
+- Restored skin visibility when Studio hides gloves, socks, shoes, or pantyhose using a clothing state that is not `3`.
+- Applied the game's slot visibility rules consistently to native and imported masks, change detection, and diagnostics while retaining card and coordinate data.
+
 ## 0.3.0 - 2026-09-04
 
 - Made compatible metadata loading, conversion, indexing, and coexistence automatic instead of separate configuration modes.

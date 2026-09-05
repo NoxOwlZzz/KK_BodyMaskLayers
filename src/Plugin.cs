@@ -21,7 +21,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     {
         public const string PluginGuid = "com.nightowlzzz.koikatsu.bodymasklayers";
         public const string PluginName = "BodyMask Layers";
-        public const string PluginVersion = "0.3.0";
+        public const string PluginVersion = "0.3.1";
 
         internal static ManualLogSource Log;
         internal static PluginConfig Settings;

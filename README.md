@@ -2,7 +2,7 @@
 
 BodyMask Layers gives each supported Koikatsu clothing slot its own body alpha mask. Every mask follows the state and identity of its garment, and active masks are composed over the current body mask.
 
-- Version: `0.3.0`
+- Version: `0.3.1`
 - Plugin GUID: `com.nightowlzzz.koikatsu.bodymasklayers`
 - Author: NightOwlZzz / Owl
 - Processes: `Koikatu.exe` and `CharaStudio.exe`
@@ -117,7 +117,7 @@ The existing pure .NET suite covers serialization, schema migration, binding, me
 - It supports Bottom, Bra, Shorts, Gloves, Pantyhose, Socks, and the selected Indoor or Outdoor Shoes source, including integrated-bottom and object-option constraints.
 - Matching uses the equipped category and item identity, Sideloader GUID/original ID, and the corresponding manifest record.
 - If a separate provider is installed, its material writes become the upstream composition base and the built-in metadata reader remains idle to prevent duplicate ownership.
-- Compatible sources use raw state coverage `0=R`, `1=G`, `2=B`, and `3=Off` and are combined with maximum hide coverage.
+- Compatible sources use mask planes `0=R`, `1=G`, `2=B`, and `3=Off` and are combined with maximum hide coverage. Slot visibility takes precedence: gloves, socks, and shoes contribute only in state `0`; pantyhose contributes in states `0/1`.
 - The fallback poll handles game changes without a reliable event and performs no image decoding, source IO, or composition while state is unchanged.
 - Compatible source lookup applies to effective high-poly characters.
 - A body shader without `_AlphaMask`, `_alpha_a`, and `_alpha_b` is left untouched.
