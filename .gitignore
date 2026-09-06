@@ -11,7 +11,6 @@ coverage*/
 *.mdb
 *.cache
 *.cfg
-!config/*.cfg.example
 *.log
 *.bak
 *.tmp

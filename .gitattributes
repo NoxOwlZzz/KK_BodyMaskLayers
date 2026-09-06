@@ -4,4 +4,3 @@
 *.sln text eol=crlf
 *.bat text eol=crlf
 *.md text eol=lf
-*.example text eol=lf

@@ -53,6 +53,8 @@ Restart the game after replacing the DLL. Do not hot-reload this plugin.
 
 The Load action is unavailable when the slot has no bindable item. **Bind mask to current item** deliberately replaces the stored item identity; use it only after replacing a garment with compatible body coverage.
 
+**Export mask texture** writes the original PNG byte-for-byte. **Clear mask texture** removes that slot's record; disabling the layer retains its image and binding.
+
 Compatible external sources do not add controls or prompts. When resolved, they are imported automatically without modifying the source zipmod or overwriting a mask already assigned to that slot. A normal card or coordinate save persists the imported copy.
 
 ## Saved data
@@ -63,6 +65,8 @@ The payload stores the original PNG bytes, enable state, interpretation mode, so
 
 ## Mask palette
 
+Use the character's base-body UV layout, not the garment mesh UV. Import a square, power-of-two PNG with 8-bit channels (RGB, indexed, grayscale with alpha, or RGBA), within the 32 MiB cap. Source alpha does not control hiding; use opaque colors for clarity.
+
 | Color | Full | Partial | Off |
 |---|---:|---:|---:|
 | Yellow `#FFFF00` | visible | visible | visible |
@@ -70,11 +74,11 @@ The payload stores the original PNG bytes, enable state, interpretation mode, so
 | Black `#000000` | hidden | hidden | visible |
 | Red `#FF0000` | hidden | hidden | visible |
 
-`Gradient Handling = Auto` also preserves compatible intermediate R/G values as continuous coverage. Blue data is rejected by default because it can represent unrelated packed information. Binary masks resize with nearest-neighbor sampling; continuous state planes use bilinear interpolation after decoding. Embedded PNG data has a fixed 32 MiB cap.
+For pixels outside the exact palette, `Gradient Handling = Auto` accepts continuous coverage when `B=0` and `R<=G`: Full hiding is `255-R`, Partial is `255-G`, and Off contributes nothing. `PreserveContinuous` also accepts non-monotonic R/G coverage; `StrictCategorical` uses palette classification and tolerance. Unsupported colors follow `UnknownColorPolicy`.
+
+Disable antialiasing for categorical masks or keep soft edges in compatible R/G space. Binary masks resize with nearest-neighbor sampling; continuous state planes use bilinear interpolation. Overlapping masks combine by maximum hide coverage.
 
 The interpretation mode is stored with each imported layer. Changing the global default affects later imports; reimport a source to reinterpret an existing layer. Schema 1 payloads use `StrictCategorical` when read.
-
-See [MASK_AUTHORING.md](MASK_AUTHORING.md) for authoring details.
 
 ## Configuration
 
@@ -95,7 +99,7 @@ The live configuration is created under the game's BepInEx `config` directory.
 | `LogIntervalSeconds` | `1` | Rate limit for repeated diagnostic messages |
 | `DumpDiagnosticsShortcut` | `F8 + LeftControl` | Write a diagnostic snapshot to the log and config directory |
 
-Compatible-source loading, indexing, import, and coexistence are automatic rather than configuration modes. A complete example is available in [`config/com.nightowlzzz.koikatsu.bodymasklayers.cfg.example`](config/com.nightowlzzz.koikatsu.bodymasklayers.cfg.example).
+Compatible-source loading, indexing, import, and coexistence are automatic. Configuration sections, keys, and descriptions are defined in [`PluginConfig.cs`](src/PluginConfig.cs); BepInEx generates the configuration on first launch.
 
 ## Build and tests
 
@@ -103,11 +107,11 @@ The project targets .NET Framework 3.5. Compile references come from a valid gam
 
 ```bat
 copy-references.bat "KOIKATSU_GAME_DIRECTORY"
-build-release.bat
+build.bat
 run-tests.bat
 ```
 
-Visual Studio 2022 or compatible MSBuild tooling is required. Release builds omit debug symbols.
+Visual Studio 2022 or compatible MSBuild tooling is required. `build.bat` compiles Release and verifies that the DLL exists without debug symbols. The solution supports Debug builds for development.
 
 The existing pure .NET suite covers serialization, schema migration, binding, metadata parsing, categorical and continuous decoding, composition rules, caches, and scheduling. Runtime appearance and lifecycle behavior should also be checked in-game before publishing a release.
 

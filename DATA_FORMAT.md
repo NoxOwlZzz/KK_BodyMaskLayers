@@ -74,7 +74,7 @@ The framed record contains the schema 1 fields through the optional bound identi
 | PNG length | Int32 | Positive length up to the 32 MiB cap |
 | Original PNG | bytes | Exactly PNG length bytes |
 
-The source fields describe how to rebuild the runtime representation. `ExternalRgbStateCoverage` means stored PNG R/G/B are direct hide-coverage planes for raw clothing states 0/1/2; raw state 3 is neutral. They do not embed continuous coverage planes, bitsets, provider caches or other compiled buffers.
+The source fields describe how to rebuild the runtime representation. `ExternalRgbStateCoverage` means stored PNG R/G/B are direct hide-coverage planes for states 0/1/2; state 3 is neutral. Runtime slot visibility is applied before selecting a plane without changing the stored channel meanings. These fields do not embed continuous coverage planes, bitsets, provider caches or other compiled buffers.
 
 Bound identity block (unchanged in both schemas):
 
@@ -140,4 +140,4 @@ Readers currently reject unknown schema versions instead of guessing. Any future
 4. keep supported card and coordinate loading non-destructive;
 5. add pure-logic corruption and round-trip tests before release.
 
-Changing classification defaults does not rewrite the stored PNG. It only changes runtime decode behavior and can be reversed through configuration.
+`Color classification`, `ColorTolerance`, and `UnknownColorPolicy` affect decoding of existing native masks without rewriting their PNG bytes. `Gradient Handling` is stored per layer; changing its global default affects later imports, not the interpretation stored in an existing layer. External RGB coverage is decoded according to its source contract.
