@@ -103,15 +103,25 @@ Compatible-source loading, indexing, import, and coexistence are automatic. Conf
 
 ## Build and tests
 
-The project targets .NET Framework 3.5. Compile references come from a valid game installation and are excluded from the repository and release packages.
+The project targets .NET Framework 3.5 and requires Visual Studio 2022 or compatible MSBuild tooling. Create a `lib` directory at the repository root and copy these compile references from a valid game installation:
 
-```bat
-copy-references.bat "KOIKATSU_GAME_DIRECTORY"
-build.bat
-run-tests.bat
+| Source within the game directory | DLLs to copy into `lib` |
+|---|---|
+| `Koikatu_Data/Managed` | `mscorlib.dll`, `System.dll`, `System.Core.dll`, `System.Xml.dll`, `Assembly-CSharp.dll`, `Assembly-CSharp-firstpass.dll`, `UnityEngine.dll`, `UnityEngine.UI.dll` |
+| `BepInEx/core` | `BepInEx.dll`, `0Harmony.dll` |
+| `BepInEx/plugins` | `KKAPI.dll`, `ExtensibleSaveFormat.dll` (locate them in plugin subdirectories if needed) |
+
+These references are excluded from Git and release output. Do not redistribute them.
+
+From the repository root in a Visual Studio Developer Command Prompt, run:
+
+```cmd
+MSBuild KK_BodyMaskLayers.csproj /t:Rebuild /p:Configuration=Release /m /nologo
+MSBuild tests\KK_BodyMaskLayers.Tests.csproj /t:Rebuild /p:Configuration=Release /m /nologo
+tests\bin\Release\KK_BodyMaskLayers.Tests.exe
 ```
 
-Visual Studio 2022 or compatible MSBuild tooling is required. `build.bat` compiles Release and verifies that the DLL exists without debug symbols. The solution supports Debug builds for development.
+The plugin output is `bin/Release/KK_BodyMaskLayers.dll`; Release builds omit debug symbols. Verify that the DLL is present without a PDB before packaging it. The solution supports Debug builds for development.
 
 The existing pure .NET suite covers serialization, schema migration, binding, metadata parsing, categorical and continuous decoding, composition rules, caches, and scheduling. Runtime appearance and lifecycle behavior should also be checked in-game before publishing a release.
 

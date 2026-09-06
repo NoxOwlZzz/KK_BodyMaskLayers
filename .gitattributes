@@ -2,5 +2,4 @@
 *.cs text eol=crlf
 *.csproj text eol=crlf
 *.sln text eol=crlf
-*.bat text eol=crlf
 *.md text eol=lf
