@@ -142,7 +142,3 @@ The binary data format is documented in [DATA_FORMAT.md](DATA_FORMAT.md). This r
 ## Credits
 
 Built for the Koikatsu modding ecosystem using BepInEx, HarmonyX, IllusionModdingAPI/KKAPI, ExtensibleSaveFormat, and Sideloader.
-
-## License
-
-No license has been selected for this repository. Public redistribution should wait until the copyright holder adds a `LICENSE` file.
