@@ -73,7 +73,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             AppendPlugin(builder, "nakay.kk.ChaAlphaMask", "ChaAlphaMask");
             AppendPlugin(builder, "com.deathweasel.bepinex.materialeditor", "MaterialEditor");
             AppendPlugin(builder, "com.deathweasel.bepinex.uncensorselector", "UncensorSelector");
-            AppendPlugin(builder, "com.jim60105.kk.coordinateloadoption", "CoordinateLoadOption");
+            AppendPlugin(builder, GameTarget.CoordinateLoadOptionGuid, "CoordinateLoadOption");
             AppendPlugin(builder, "com.bepis.bepinex.sideloader", "Sideloader");
             builder.AppendLine()
                 .Append(ExternalMaskProvider.BuildIndexSummary());

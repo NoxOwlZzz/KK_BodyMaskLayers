@@ -176,7 +176,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 return sideloaderGetPng;
             }
 
-            Type type = Type.GetType("Sideloader.Sideloader, Sideloader", false);
+            Type type = Type.GetType(GameTarget.SideloaderType, false);
             if (type == null)
             {
                 return null;

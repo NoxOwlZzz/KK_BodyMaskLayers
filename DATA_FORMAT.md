@@ -4,6 +4,8 @@
 
 The plugin GUID is `com.nightowlzzz.koikatsu.bodymasklayers`. Extended Save attaches a `PluginData` record to each `ChaFileClothes` object. The binary payload is stored at key `Payload`.
 
+KK and KKS builds use this same GUID, key, public namespace, and schema. Their assembly names differ, but the payload contains no assembly-qualified type names. KKS support does not add or renumber serialized slots.
+
 Because the outfit object owns the record:
 
 - each of the character's coordinates can hold different layers;
@@ -128,7 +130,15 @@ The binary format and import pipeline use a fixed 32 MiB PNG cap to prevent host
 
 Full card/coordinate loads follow KKAPI/Extended Save callbacks. Maker load flags preserve current clothes data when Clothes is not selected.
 
-Coordinate Load Option 21.1.4 bypasses unknown plugin payloads during partial per-slot copies. The optional adapter merges schema records at slot granularity: selected slots are replaced or cleared according to the source; unselected slots are retained byte-for-byte at the logical record level. If its version/signature check fails, the adapter makes no metadata change.
+Both APIs resolve coordinate index `-1` to the transient `nowCoordinate` and a nonnegative index to `chaFile.coordinate[index]`. Writes update both the active transient outfit and its valid indexed counterpart. KK normally has seven coordinate types and KKS four; the controller checks the actual array length instead of assuming a fixed count.
+
+The serialized slot map remains `Top=0`, `Bottom=1`, `Bra=2`, `Shorts=3`, `Gloves=4`, `Pantyhose=5`, `Socks=6`, `IndoorShoes=7`, and `OutdoorShoes=8`. KKS still has nine clothing-data slots and uses slot `8` for its Maker shoes tab. Omitting the Indoor Shoes controls does not remove slot `7` from saved data or renumber slot `8`.
+
+The shared mask format does not imply verified cross-game card compatibility. Clothing categories and identities must still resolve in the destination game, and the games' coordinate layouts differ. No cross-game card or coordinate migration is performed.
+
+KK Coordinate Load Option `21.1.4` bypasses unknown plugin payloads during partial per-slot copies. The optional adapter merges schema records at slot granularity: selected slots are replaced or cleared according to the source; unselected slots are retained byte-for-byte at the logical record level. If its version/signature check fails, the adapter makes no metadata change.
+
+The KKS partial-slot adapter is disabled. KKS Coordinate Load Option `21.12.23.0` can abort its clothing transfer without returning a success indicator, so an unconditional post-transfer merge could replace masks even when their garments were not copied. Use complete coordinate loading for mask data in KKS; the normal KKAPI/Extended Save path is independent of this optional bridge.
 
 ## Forward compatibility
 

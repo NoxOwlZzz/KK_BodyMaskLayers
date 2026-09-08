@@ -23,7 +23,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             if (!forceHighPolyLookupComplete)
             {
                 forceHighPolyLookupComplete = true;
-                Type type = Type.GetType("KK_Plugins.ForceHighPoly, KK_ForceHighPoly", false);
+                Type type = Type.GetType(GameTarget.ForceHighPolyType, false);
                 forceHighPolyIsHiPoly = type == null
                     ? null
                     : type.GetMethod(

@@ -1,25 +1,38 @@
+using BepInEx.Bootstrap;
+using HarmonyLib;
+#if !KKS
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using BepInEx;
-using BepInEx.Bootstrap;
 using ExtensibleSaveFormat;
-using HarmonyLib;
 using UnityEngine.UI;
+#endif
 
 namespace NightOwlZzz.Koikatsu.BodyMaskLayers
 {
     public static class CompatibilityPatches
     {
+#if !KKS
         private sealed class PartialCoordinateLoadState
         {
             public ChaControl Target;
             public bool[] SelectedSlots;
             public Dictionary<ClothingSlot, ClothingMaskLayerData> SourceLayers;
         }
+#endif
 
         public static void Install(Harmony harmony)
         {
+#if KKS
+            // This adapter can return before copying clothing; its postfix cannot identify a successful load.
+            if (Chainloader.PluginInfos.ContainsKey(GameTarget.CoordinateLoadOptionGuid))
+            {
+                BodyMaskLayersPlugin.Log.LogWarning(
+                    "Coordinate Load Option partial-slot mask merging is unavailable in Sunshine. " +
+                    "Use full coordinate loading to transfer BodyMask Layers data.");
+            }
+#else
             try
             {
                 InstallCoordinateLoadOptionBridge(harmony);
@@ -30,6 +43,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                     "Coordinate Load Option bridge was disabled after a safe install failure: " +
                     exception.Message);
             }
+#endif
         }
 
         public static void LogDetectedPlugins()
@@ -37,10 +51,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             LogPlugin("nakay.kk.ChaAlphaMask", "external body-mask provider");
             LogPlugin("com.deathweasel.bepinex.materialeditor", "Material Editor");
             LogPlugin("com.deathweasel.bepinex.uncensorselector", "Uncensor Selector");
-            LogPlugin("com.jim60105.kk.coordinateloadoption", "Coordinate Load Option bridge");
+            LogPlugin(GameTarget.CoordinateLoadOptionGuid, "Coordinate Load Option");
             LogPlugin("com.bepis.bepinex.sideloader", "Sideloader identity binding");
         }
 
+#if !KKS
         private static void InstallCoordinateLoadOptionBridge(Harmony harmony)
         {
             PluginInfo pluginInfo;
@@ -212,6 +227,8 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             return field == null ? null : field.GetValue(value) as ChaControl;
         }
+
+#endif
 
         private static void LogPlugin(string guid, string feature)
         {

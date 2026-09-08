@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
+    <OutputType>Library</OutputType>
+    <RootNamespace>NightOwlZzz.Koikatsu.BodyMaskLayers</RootNamespace>
+    <TargetFrameworkProfile />
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <LangVersion>7.3</LangVersion>
+    <NoStdLib>true</NoStdLib>
+    <_EnableDefaultWindowsPlatform>false</_EnableDefaultWindowsPlatform>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <WarningLevel>4</WarningLevel>
+    <OutputPath Condition="'$(OutputPath)' == '' And '$(Game)' == 'KK'">bin\$(Configuration)\</OutputPath>
+    <OutputPath Condition="'$(OutputPath)' == ''">bin\$(Game)\$(Configuration)\</OutputPath>
+    <BaseIntermediateOutputPath Condition="'$(Game)' == 'KKS'">obj\KKS\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath Condition="'$(Game)' == 'KKS'">obj\KKS\$(Configuration)\</IntermediateOutputPath>
+    <DefineConstants>$(DefineConstants);TRACE;$(Game)</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManagedReferencePath Condition="'$(ManagedReferencePath)' == '' And '$(GameRoot)' != ''">$(GameRoot)\$(GameDataDirectory)\Managed</ManagedReferencePath>
+    <ManagedReferencePath Condition="'$(ManagedReferencePath)' == ''">$(GameReferencePath)</ManagedReferencePath>
+    <BepInExReferencePath Condition="'$(BepInExReferencePath)' == '' And '$(GameRoot)' != ''">$(GameRoot)\BepInEx\core</BepInExReferencePath>
+    <BepInExReferencePath Condition="'$(BepInExReferencePath)' == ''">$(GameReferencePath)</BepInExReferencePath>
+    <ApiReferencePath Condition="'$(ApiReferencePath)' == '' And '$(GameRoot)' != ''">$(GameRoot)\BepInEx\plugins\$(ApiAssemblyName).dll</ApiReferencePath>
+    <ApiReferencePath Condition="'$(ApiReferencePath)' == ''">$(GameReferencePath)\$(ApiAssemblyName).dll</ApiReferencePath>
+    <ExtendedSaveReferencePath Condition="'$(ExtendedSaveReferencePath)' == '' And '$(GameRoot)' != ''">$(GameRoot)\BepInEx\plugins\$(Game)_BepisPlugins\$(ExtendedSaveAssemblyName).dll</ExtendedSaveReferencePath>
+    <ExtendedSaveReferencePath Condition="'$(ExtendedSaveReferencePath)' == ''">$(GameReferencePath)\$(ExtendedSaveAssemblyName).dll</ExtendedSaveReferencePath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib;System;System.Core;System.Xml;Assembly-CSharp;Assembly-CSharp-firstpass;UnityEngine;UnityEngine.UI">
+      <HintPath>$(ManagedReferencePath)\%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx;0Harmony">
+      <HintPath>$(BepInExReferencePath)\%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(ApiAssemblyName)">
+      <HintPath>$(ApiReferencePath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(ExtendedSaveAssemblyName)">
+      <HintPath>$(ExtendedSaveReferencePath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UniRx;UnityEngine.CoreModule;UnityEngine.ImageConversionModule" Condition="'$(Game)' == 'KKS'">
+      <HintPath>$(ManagedReferencePath)\%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Compile Include="$(MSBuildThisFileDirectory)src\*.cs" />
+  </ItemGroup>
+</Project>

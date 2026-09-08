@@ -1,10 +1,11 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using NightOwlZzz.Koikatsu.BodyMaskLayers;
 
-[assembly: AssemblyTitle("KK_BodyMaskLayers")]
-[assembly: AssemblyDescription("Independent per-clothing-slot body alpha mask layers for Koikatsu")]
+[assembly: AssemblyTitle(GameTarget.AssemblyName)]
+[assembly: AssemblyDescription(GameTarget.AssemblyDescription)]
 [assembly: AssemblyCompany("NightOwlZzz")]
-[assembly: AssemblyProduct("KK_BodyMaskLayers")]
+[assembly: AssemblyProduct(GameTarget.AssemblyName)]
 [assembly: AssemblyCopyright("Copyright (c) NightOwlZzz / Owl")]
 [assembly: ComVisible(false)]
 [assembly: Guid("EA1BED5E-CE7C-49D0-BD86-3784A82B3F9A")]

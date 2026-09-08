@@ -6,7 +6,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     public static class ClothingItemIdentityResolver
     {
         private static readonly Type ResolverType = Type.GetType(
-            "Sideloader.AutoResolver.UniversalAutoResolver, Sideloader", false);
+            GameTarget.SideloaderResolverType, false);
         private static readonly MethodInfo TryGetResolutionInfo = FindResolutionMethod();
         private static readonly MethodInfo TryGetExternalResolutionInfo = FindExternalResolutionMethod();
 

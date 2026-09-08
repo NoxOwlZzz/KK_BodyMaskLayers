@@ -14,7 +14,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             BodyMaskPerformanceMetrics.Increment(
                 PerformanceCounter.GlobalSideloaderScans);
             Type sideloaderType = Type.GetType(
-                "Sideloader.Sideloader, Sideloader",
+                GameTarget.SideloaderType,
                 false);
             if (sideloaderType == null)
             {

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Game Condition="'$(Game)' == ''">Both</Game>
+    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
+  </PropertyGroup>
+  <ItemGroup>
+    <GameProject Include="KK_BodyMaskLayers.csproj" Condition="'$(Game)' == 'KK' Or '$(Game)' == 'Both'" />
+    <GameProject Include="KKS_BodyMaskLayers.csproj" Condition="'$(Game)' == 'KKS' Or '$(Game)' == 'Both'" />
+  </ItemGroup>
+  <Target Name="ValidateGame">
+    <Error Condition="'@(GameProject)' == ''" Text="Game must be KK, KKS, or Both." />
+    <Error Condition="'$(Game)' == 'Both' And '$(GameRoot)' != ''" Text="Use KKGameRoot and KKSGameRoot when building both variants." />
+  </Target>
+  <Target Name="Build" DependsOnTargets="ValidateGame">
+    <MSBuild Projects="@(GameProject)" Targets="Build" BuildInParallel="true" RemoveProperties="Game" Properties="Configuration=$(Configuration)" />
+  </Target>
+  <Target Name="Clean" DependsOnTargets="ValidateGame">
+    <MSBuild Projects="@(GameProject)" Targets="Clean" BuildInParallel="true" RemoveProperties="Game" Properties="Configuration=$(Configuration)" />
+  </Target>
+  <Target Name="Rebuild" DependsOnTargets="Clean;Build" />
+  <Target Name="Package" DependsOnTargets="ValidateGame">
+    <MSBuild Projects="@(GameProject)" Targets="Package" BuildInParallel="true" RemoveProperties="Game" Properties="Configuration=$(Configuration)" />
+  </Target>
+</Project>

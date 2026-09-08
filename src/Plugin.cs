@@ -15,7 +15,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
     [BepInDependency("com.bepis.bepinex.sideloader", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("KCOX", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("nakay.kk.ChaAlphaMask", BepInDependency.DependencyFlags.SoftDependency)]
-    [BepInProcess("Koikatu.exe")]
+    [BepInProcess(GameTarget.MainProcess)]
     [BepInProcess("CharaStudio.exe")]
     public sealed class BodyMaskLayersPlugin : BaseUnityPlugin
     {

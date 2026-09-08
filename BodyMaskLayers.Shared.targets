@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <OverwritePackage Condition="'$(OverwritePackage)' == ''">false</OverwritePackage>
+  </PropertyGroup>
+  <Target Name="ValidateGameReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('%(Reference.HintPath)')"
+           Text="Missing $(Game) reference: %(Reference.Identity). Set GameRoot or provide the references in GameReferencePath. Individual reference paths can also be overridden." />
+  </Target>
+  <Target Name="ValidateReleaseOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Error Condition="!Exists('$(TargetPath)')" Text="The Release DLL was not produced." />
+    <Error Condition="Exists('$(TargetDir)$(TargetName).pdb')" Text="Release output contains a PDB. Clean this configuration before packaging." />
+  </Target>
+  <Target Name="ValidatePackageConfiguration">
+    <Error Condition="'$(Configuration)' != 'Release'" Text="Packages require Configuration=Release." />
+  </Target>
+  <Target Name="Package" DependsOnTargets="ValidatePackageConfiguration;Build">
+    <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
+      <Output TaskParameter="Assemblies" ItemName="_PackageAssembly" />
+    </GetAssemblyIdentity>
+    <PropertyGroup>
+      <_PackageAssemblyVersion>@(_PackageAssembly->'%(Version)')</_PackageAssemblyVersion>
+      <_PackageVersion>$([System.Version]::Parse('$(_PackageAssemblyVersion)').ToString(3))</_PackageVersion>
+      <PackageOutputPath Condition="'$(PackageOutputPath)' == ''">$(MSBuildProjectDirectory)\dist</PackageOutputPath>
+      <_PackagePath>$(PackageOutputPath)\$(AssemblyName)_v$(_PackageVersion).zip</_PackagePath>
+      <_PackageStagingRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\obj'))</_PackageStagingRoot>
+      <_PackageStagingId>$([System.Guid]::NewGuid().ToString('N'))</_PackageStagingId>
+      <_PackageStaging>$([System.IO.Path]::GetFullPath('$(_PackageStagingRoot)\$(Game)\package-$(_PackageStagingId)'))\</_PackageStaging>
+      <_PackageGameName Condition="'$(Game)' == 'KK'">Koikatsu</_PackageGameName>
+      <_PackageGameName Condition="'$(Game)' == 'KKS'">Koikatsu Sunshine</_PackageGameName>
+      <_PackageCompatibilityNote Condition="'$(Game)' == 'KKS'">KKS: pendiente de pruebas en el juego. No usar la carga parcial de Coordinate Load Option para transferir mascaras%3B usar carga completa.</_PackageCompatibilityNote>
+    </PropertyGroup>
+    <Error Condition="Exists('$(_PackagePath)') And '$(OverwritePackage)' != 'true'"
+           Text="The package already exists. Choose a different PackageOutputPath or explicitly set OverwritePackage=true." />
+    <Error Condition="!$([System.String]::Copy('$(_PackageStaging)').StartsWith('$(_PackageStagingRoot)\'))"
+           Text="Package staging must stay inside the project's obj directory." />
+    <MakeDir Directories="$(PackageOutputPath);$(_PackageStaging)BepInEx\plugins\$(AssemblyName)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_PackageStaging)BepInEx\plugins\$(AssemblyName)" />
+    <WriteLinesToFile File="$(_PackageStaging)REQUISITOS.txt" Overwrite="true" Encoding="UTF-8"
+                      Lines="BodyMask Layers $(_PackageVersion) - $(_PackageGameName);Requisitos: $(_PackageGameName), BepInEx 5, $(ApiAssemblyName) 1.42.2 o superior y ExtensibleSaveFormat 20.0 o superior para este juego.;Instalacion: extraer BepInEx en la carpeta del juego. No instalar las variantes KK y KKS juntas.;Sideloader solo es necesario para importar mascaras declaradas en zipmods. No hace falta otro plugin de BodyAlphaMask.;$(_PackageCompatibilityNote)" />
+    <ZipDirectory SourceDirectory="$(_PackageStaging)" DestinationFile="$(_PackagePath)" Overwrite="$(OverwritePackage)" />
+    <RemoveDir Directories="$(_PackageStaging)" />
+    <Message Importance="high" Text="Package: $(_PackagePath)" />
+  </Target>
+</Project>

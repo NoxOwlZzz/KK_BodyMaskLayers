@@ -3,6 +3,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" Condition="false" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Game Condition="'$(Game)' == ''">KK</Game>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{586F31E1-74D4-4A9F-8C65-9A476580356A}</ProjectGuid>
     <OutputType>Exe</OutputType>
@@ -23,7 +24,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>DEBUG;TRACE;$(Game)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -33,7 +34,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRACE;$(Game)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -69,6 +70,9 @@
     <Compile Include="CharacterExternalMaskSessionTests.cs" />
     <Compile Include="NativeMaskLayerStoreTests.cs" />
     <Compile Include="NativeMaskDecodePipelineTests.cs" />
+    <Compile Include="..\src\GameTarget.cs">
+      <Link>LinkedSource\GameTarget.cs</Link>
+    </Compile>
 
     <Compile Include="..\src\PerformanceCounters.cs">
       <Link>LinkedSource\PerformanceCounters.cs</Link>

@@ -68,6 +68,11 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 ClothingSlot slot = (ClothingSlot)index;
                 ClothingSlot capturedSlot = slot;
                 MakerCategory category = GetMakerCategory(slot);
+                if (category == null)
+                {
+                    continue;
+                }
+
                 SlotControls controls = new SlotControls(slot);
                 _slotControls[index] = controls;
 
@@ -110,7 +115,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
             }
 
             BodyMaskLayersPlugin.LogDebug(
-                "Registered BodyMask Layers controls in all nine stock clothing tabs.");
+                "Registered BodyMask Layers controls in the supported stock clothing tabs.");
             RefreshAll(true);
         }
 
@@ -619,7 +624,12 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
                 case ClothingSlot.Socks:
                     return MakerConstants.Clothes.Socks;
                 case ClothingSlot.IndoorShoes:
+#if KKS
+                    // Sunshine retains slot 7 in card data but has no Maker category for it.
+                    return null;
+#else
                     return MakerConstants.Clothes.InnerShoes;
+#endif
                 case ClothingSlot.OutdoorShoes:
                     return MakerConstants.Clothes.OuterShoes;
                 default:
