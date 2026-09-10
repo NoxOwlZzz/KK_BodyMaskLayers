@@ -14,6 +14,7 @@ namespace NightOwlZzz.Koikatsu.BodyMaskLayers
         public const string AssemblyName = "KK_BodyMaskLayers";
         public const string AssemblyDescription = "Independent per-clothing-slot body alpha mask layers for Koikatsu";
         public const string MainProcess = "Koikatu.exe";
+        public const string PartyProcess = "Koikatsu Party.exe";
         public const string SideloaderAssembly = "Sideloader";
         public const string ForceHighPolyType = "KK_Plugins.ForceHighPoly, KK_ForceHighPoly";
         public const string CoordinateLoadOptionGuid = "com.jim60105.kk.coordinateloadoption";

@@ -1,9 +1,12 @@
 # Changelog
 
-## 0.3.1 - 2026-09-05
+## 0.3.1 - 2026-09-09
 
 - Restored skin visibility when Studio hides gloves, socks, shoes, or pantyhose using a clothing state that is not `3`.
 - Applied the game's slot visibility rules consistently to native and imported masks, change detection, and diagnostics while retaining card and coordinate data.
+- Added a Koikatsu Sunshine build sharing the same implementation and saved-data format, with separate game references and packaging.
+- Included `Koikatsu Party.exe` in the KK launch filter while keeping the KKS process list separate and excluding VR.
+- Party and Sunshine runtime validation remains pending; Sunshine does not support partial mask transfers through Coordinate Load Option.
 
 ## 0.3.0 - 2026-09-04
 

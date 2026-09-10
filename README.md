@@ -1,14 +1,16 @@
 # BodyMask Layers (KK / KKS)
 
-BodyMask Layers gives each supported clothing slot its own body alpha mask in Koikatsu (KK) and Koikatsu Sunshine (KKS). Every mask follows the state and identity of its garment, and active masks are composed over the current body mask. The two game builds share the same source and saved-data format.
+BodyMask Layers gives each supported clothing slot its own body alpha mask in Koikatsu / Koikatsu Party (KK) and Koikatsu Sunshine (KKS). Every mask follows the state and identity of its garment, and active masks are composed over the current body mask. The two game builds share the same source and saved-data format.
 
 - Version: `0.3.1`
 - Plugin GUID: `com.nightowlzzz.koikatsu.bodymasklayers`
 - Author: NightOwlZzz / Owl
-- KK processes: `Koikatu.exe` and `CharaStudio.exe`
+- KK processes: `Koikatu.exe`, `Koikatsu Party.exe`, and `CharaStudio.exe`
 - KKS processes: `KoikatsuSunshine.exe` and `CharaStudio.exe`
 
 The KKS build has been checked against the game's assemblies; Maker, Studio, and main-game runtime validation is still pending.
+
+Koikatsu Party uses the KK build. Its launch filter includes the exact executable name above; runtime validation in the Steam edition is still pending.
 
 ## Features
 
@@ -32,7 +34,7 @@ Both variants require BepInEx 5 and the dependencies built for the same game:
 
 | Game | Plugin DLL | Framework | API | Extended Save |
 |---|---|---|---|---|
-| Koikatsu | `KK_BodyMaskLayers.dll` | .NET Framework 3.5 | KKAPI `1.42.2` or newer | ExtensibleSaveFormat `20.0` or newer |
+| Koikatsu / Koikatsu Party | `KK_BodyMaskLayers.dll` | .NET Framework 3.5 | KKAPI `1.42.2` or newer | ExtensibleSaveFormat `20.0` or newer |
 | Koikatsu Sunshine | `KKS_BodyMaskLayers.dll` | .NET Framework 4.6 | KKSAPI `1.42.2` or newer | KKS ExtensibleSaveFormat `20.0` or newer |
 
 Sideloader is required only when resolving compatible textures declared by zipmods. KCOX, Material Editor, Uncensor Selector, clothing-state menus, and Coordinate Load Option are optional compatibility targets.
@@ -202,6 +204,7 @@ Run the following checks separately in each game with only its matching plugin D
 KK regression checklist:
 
 - [ ] Run the checks above against existing KK cards and coordinates.
+- [ ] In Koikatsu Party, confirm plugin initialization in `Koikatsu Party.exe` and run the applicable Maker and main-game checks above.
 - [ ] Check all nine Maker tabs and both shoe selections, including immediate Top and Studio visibility updates.
 - [ ] With CLO `21.1.4`, verify selected slots replace/clear masks and unselected slots retain theirs.
 

@@ -26,7 +26,7 @@
       <_PackageStagingRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\obj'))</_PackageStagingRoot>
       <_PackageStagingId>$([System.Guid]::NewGuid().ToString('N'))</_PackageStagingId>
       <_PackageStaging>$([System.IO.Path]::GetFullPath('$(_PackageStagingRoot)\$(Game)\package-$(_PackageStagingId)'))\</_PackageStaging>
-      <_PackageGameName Condition="'$(Game)' == 'KK'">Koikatsu</_PackageGameName>
+      <_PackageGameName Condition="'$(Game)' == 'KK'">Koikatsu / Koikatsu Party</_PackageGameName>
       <_PackageGameName Condition="'$(Game)' == 'KKS'">Koikatsu Sunshine</_PackageGameName>
       <_PackageCompatibilityNote Condition="'$(Game)' == 'KKS'">KKS: pendiente de pruebas en el juego. No usar la carga parcial de Coordinate Load Option para transferir mascaras%3B usar carga completa.</_PackageCompatibilityNote>
     </PropertyGroup>
