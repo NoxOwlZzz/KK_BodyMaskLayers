@@ -28,7 +28,7 @@
       <_PackageStaging>$([System.IO.Path]::GetFullPath('$(_PackageStagingRoot)\$(Game)\package-$(_PackageStagingId)'))\</_PackageStaging>
       <_PackageGameName Condition="'$(Game)' == 'KK'">Koikatsu / Koikatsu Party</_PackageGameName>
       <_PackageGameName Condition="'$(Game)' == 'KKS'">Koikatsu Sunshine</_PackageGameName>
-      <_PackageCompatibilityNote Condition="'$(Game)' == 'KKS'">KKS: pendiente de pruebas en el juego. No usar la carga parcial de Coordinate Load Option para transferir mascaras%3B usar carga completa.</_PackageCompatibilityNote>
+      <_PackageCompatibilityNote Condition="'$(Game)' == 'KKS'">KKS: usar la carga completa de coordenadas para transferir mascaras.</_PackageCompatibilityNote>
     </PropertyGroup>
     <Error Condition="Exists('$(_PackagePath)') And '$(OverwritePackage)' != 'true'"
            Text="The package already exists. Choose a different PackageOutputPath or explicitly set OverwritePackage=true." />

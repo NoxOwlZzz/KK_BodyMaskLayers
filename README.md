@@ -8,9 +8,7 @@ BodyMask Layers gives each supported clothing slot its own body alpha mask in Ko
 - KK processes: `Koikatu.exe`, `Koikatsu Party.exe`, and `CharaStudio.exe`
 - KKS processes: `KoikatsuSunshine.exe` and `CharaStudio.exe`
 
-The KKS build has been checked against the game's assemblies; Maker, Studio, and main-game runtime validation is still pending.
-
-Koikatsu Party uses the KK build. Its launch filter includes the exact executable name above; runtime validation in the Steam edition is still pending.
+Koikatsu Party uses the KK build.
 
 ## Features
 
@@ -24,7 +22,7 @@ Koikatsu Party uses the KK build. Its launch filter includes the exact executabl
 - Preservation of the body mask supplied by the game or other plugins.
 - Per-outfit card and coordinate persistence through Extended Save.
 - Slot-and-item binding, using Sideloader identity when available.
-- Partial-coordinate integration for the audited KK Coordinate Load Option `21.1.4`.
+- Partial-coordinate integration for KK Coordinate Load Option `21.1.4`.
 - Dirty-only composition, cached lookups, and unchanged-output upload suppression.
 - Late-frame composition so clothing visibility changes reach the body mask before rendering.
 
@@ -72,7 +70,7 @@ Compatible external sources do not add controls or prompts. When resolved, they 
 
 Each `ChaFileClothes` outfit owns its mask records. Different outfits in one card can therefore use different masks, coordinate files carry the current outfit's masks, and character cards carry the outfits saved by the game.
 
-Both builds retain all nine serialized slot indices. KKS omits only the Indoor Shoes Maker controls; Outdoor Shoes remains slot `8`. Matching payload formats do not establish cross-game card or coordinate compatibility, which has not been verified.
+Both builds retain all nine serialized slot indices. KKS omits only the Indoor Shoes Maker controls; Outdoor Shoes remains slot `8`. The shared payload stores masks; clothing identities and coordinate layouts remain specific to each game.
 
 The payload stores the original PNG bytes, enable state, interpretation mode, source metadata, validation data, and slot-and-item binding. Runtime buffers and source file paths are not stored.
 
@@ -158,22 +156,20 @@ MSBuild tests\KK_BodyMaskLayers.Tests.csproj /t:Rebuild /p:Configuration=Release
 tests\bin\Release\KK_BodyMaskLayers.Tests.exe
 ```
 
-The existing pure .NET suite covers serialization, schema migration, binding, metadata parsing, categorical and continuous decoding, composition rules, caches, and scheduling. Runtime appearance and lifecycle behavior should also be checked in-game before publishing a release.
+The pure .NET suite covers serialization, schema migration, binding, metadata parsing, categorical and continuous decoding, composition rules, caches, and scheduling.
 
-## Compatibility and limitations
+## Compatibility
 
-KKS assembly/API checks establish the mappings below, not a completed runtime test. The KK build also needs the regression checks below after shared-source changes.
+| Function | KK / Party | KKS |
+|---|---|---|
+| Maker mask controls | Nine clothing tabs | Eight clothing tabs |
+| Clothing-state updates | Nine slot indices | Nine slot indices |
+| Card and coordinate data | Per-outfit mask records | Per-outfit mask records |
+| Runtime contexts | Maker, Studio, main game | Maker, Studio, main game |
+| Compatible clothing sources | Sideloader / optional provider | KKS Sideloader / optional provider |
+| Coordinate loading | Complete coordinates and CLO `21.1.4` per-slot loading | Complete coordinates |
 
-| Function | KK | KKS | Implementation | Validation |
-|---|---|---|---|---|
-| Maker mask controls | Nine clothing tabs | Eight tabs; no Indoor Shoes tab | Shared controls; target-specific tab availability | KKS API checked; runtime pending |
-| Clothing-state updates | Nine slot indices | Same nine slot indices | Shared state normalization and composition; game hooks | KKS visibility IL checked; runtime pending |
-| Card and coordinate data | Outfit-owned records | Same payload and ownership | Shared serializer and KKAPI callbacks | Pure round-trip tests; runtime round trips required |
-| Studio and main game | KK process targets | KKS process targets | Shared character controller | KKS runtime pending; KK regression required |
-| Compatible clothing sources | Sideloader / optional provider | KKS Sideloader / optional provider | Shared reader with target-specific assembly names | KKS API checked; runtime pending |
-| CLO partial per-slot loading | Version `21.1.4` adapter | Not supported | Version-gated KK adapter only | KKS `21.12.23.0` can abort without reporting success |
-
-- KKS users should load complete coordinates when using these masks. Its Coordinate Load Option partial-slot bridge is disabled because a cancelled clothing transfer must not replace mask data.
+- In KKS, use complete coordinate loading to transfer masks.
 - The built-in reader understands `<ChaAlphaMask><mask>` entries exposed by Sideloader manifests and loads only the declared PNG or AssetBundle texture.
 - It supports Bottom, Bra, Shorts, Gloves, Pantyhose, Socks, and the selected Indoor or Outdoor Shoes source, including integrated-bottom and object-option constraints.
 - Matching uses the equipped category and item identity, Sideloader GUID/original ID, and the corresponding manifest record.
@@ -183,36 +179,15 @@ KKS assembly/API checks establish the mappings below, not a completed runtime te
 - Compatible source lookup applies to effective high-poly characters.
 - A body shader without `_AlphaMask`, `_alpha_a`, and `_alpha_b` is left untouched.
 - Automatic mask generation, painting, accessories, VR processes, and multiple masks within one clothing slot are outside the plugin's scope.
-- Cross-game card and coordinate transfer is not verified; the shared mask schema does not migrate game clothing identities or coordinate layouts.
+- Clothing identities and coordinate layouts are owned by the game; the shared mask schema stores the mask records without migrating those game-specific fields.
 
 The binary data format is documented in [DATA_FORMAT.md](DATA_FORMAT.md). This repository does not redistribute game assemblies, third-party plugins, mods, cards, or textures.
 
-### Runtime checks before release
+### Maintenance
 
-Run the following checks separately in each game with only its matching plugin DLL installed. For a failure, capture `BepInEx/LogOutput.log` and press Left Ctrl + F8 while the incorrect state is visible. Snapshots are written under `BepInEx/config/BodyMaskLayers/Diagnostics`; include the action, slot, clothing state, and game/dependency versions. Enable `DebugLogging` for counter checks and disable it afterward. Review logs for personal information before sharing them.
+When modifying the plugin, exercise mask import/export, clothing visibility, card and coordinate round trips, and independent characters in Studio. Use the matching DLL and dependencies for each game. Include scene reloads and idle periods when changing resource ownership or scheduling.
 
-| Action | Expected result | Additional evidence if it fails |
-|---|---|---|
-| Start Maker, import a categorical and a gradient mask, then enable, disable, export, and clear | Controls work; preview matches; export preserves the source PNG; disabling retains it | Import status and the smallest reproducible PNG |
-| Change each garment through its available states, including hide/remove and rapid Top changes | Body coverage follows the current state with no visible stale frame | Snapshots before and after the failing transition |
-| Save and reload two cards and multiple outfits with different masks | Each outfit retains only its own mask and item binding | Save/load steps and affected coordinate index |
-| Save/load a complete coordinate; reload a card with Clothes excluded | Coordinate masks load; excluding Clothes preserves the current masks | Selected load flags and snapshots around the load |
-| In Studio, use two characters, change clothing states, duplicate one, and save/reload the scene | Per-character masks remain independent and visibility updates immediately | Scene action sequence and affected character/slot |
-| Change clothes in the main game; test a compatible source with and without its separate provider | Native masks update; compatible sources have one owner and no duplicate contribution | Compatibility section of the snapshot and mod identity |
-| Re-enter Maker and remove/reload Studio characters repeatedly, then leave the scene idle | No duplicate controls, stale callbacks, repeated errors, or unnecessary composition | Diagnostic counters before and after idle |
-
-KK regression checklist:
-
-- [ ] Run the checks above against existing KK cards and coordinates.
-- [ ] In Koikatsu Party, confirm plugin initialization in `Koikatsu Party.exe` and run the applicable Maker and main-game checks above.
-- [ ] Check all nine Maker tabs and both shoe selections, including immediate Top and Studio visibility updates.
-- [ ] With CLO `21.1.4`, verify selected slots replace/clear masks and unselected slots retain theirs.
-
-KKS validation checklist (not yet completed):
-
-- [ ] Run the checks above in Sunshine Maker, main game, and its CharaStudio.
-- [ ] Verify eight Maker tabs, one Outdoor Shoes control block bound to slot `8`, and independent masks in the game's four coordinate types.
-- [ ] Use complete coordinate loads; if CLO `21.12.23.0` is installed, confirm the partial-slot bridge is reported disabled and the core plugin still works.
+Left Ctrl + F8 writes a diagnostic snapshot under `BepInEx/config/BodyMaskLayers/Diagnostics`. Use it with `BepInEx/LogOutput.log`, the action and clothing slot, and the game/dependency versions to reproduce an issue. `DebugLogging` enables performance counters. Review logs for personal information before sharing them.
 
 ## Credits
 

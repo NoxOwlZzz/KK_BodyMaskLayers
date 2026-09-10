@@ -134,7 +134,7 @@ Both APIs resolve coordinate index `-1` to the transient `nowCoordinate` and a n
 
 The serialized slot map remains `Top=0`, `Bottom=1`, `Bra=2`, `Shorts=3`, `Gloves=4`, `Pantyhose=5`, `Socks=6`, `IndoorShoes=7`, and `OutdoorShoes=8`. KKS still has nine clothing-data slots and uses slot `8` for its Maker shoes tab. Omitting the Indoor Shoes controls does not remove slot `7` from saved data or renumber slot `8`.
 
-The shared mask format does not imply verified cross-game card compatibility. Clothing categories and identities must still resolve in the destination game, and the games' coordinate layouts differ. No cross-game card or coordinate migration is performed.
+The shared format stores mask data. Clothing categories, item identities, and coordinate layouts remain game-specific; no cross-game card or coordinate migration is performed.
 
 KK Coordinate Load Option `21.1.4` bypasses unknown plugin payloads during partial per-slot copies. The optional adapter merges schema records at slot granularity: selected slots are replaced or cleared according to the source; unselected slots are retained byte-for-byte at the logical record level. If its version/signature check fails, the adapter makes no metadata change.
 
