@@ -217,7 +217,3 @@ KKS validation checklist (not yet completed):
 ## Credits
 
 Built for the Koikatsu and Koikatsu Sunshine modding ecosystem using BepInEx, HarmonyX, IllusionModdingAPI (KKAPI/KKSAPI), ExtensibleSaveFormat, and Sideloader.
-
-## License
-
-No license has been selected for this repository. Public redistribution should wait until the copyright holder adds a `LICENSE` file.
