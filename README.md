@@ -183,12 +183,6 @@ The pure .NET suite covers serialization, schema migration, binding, metadata pa
 
 The binary data format is documented in [DATA_FORMAT.md](DATA_FORMAT.md). This repository does not redistribute game assemblies, third-party plugins, mods, cards, or textures.
 
-### Maintenance
-
-When modifying the plugin, exercise mask import/export, clothing visibility, card and coordinate round trips, and independent characters in Studio. Use the matching DLL and dependencies for each game. Include scene reloads and idle periods when changing resource ownership or scheduling.
-
-Left Ctrl + F8 writes a diagnostic snapshot under `BepInEx/config/BodyMaskLayers/Diagnostics`. Use it with `BepInEx/LogOutput.log`, the action and clothing slot, and the game/dependency versions to reproduce an issue. `DebugLogging` enables performance counters. Review logs for personal information before sharing them.
-
 ## Credits
 
 Built for the Koikatsu and Koikatsu Sunshine modding ecosystem using BepInEx, HarmonyX, IllusionModdingAPI (KKAPI/KKSAPI), ExtensibleSaveFormat, and Sideloader.
